@@ -1033,6 +1033,23 @@ textarea.form-control { resize: vertical; min-height: 120px; }
   gap: 12px;
 }
 .footer-bottom p { font-size: 0.78rem; color: var(--text-3); }
+.footer-notice {
+  padding: 14px 18px;
+  border-radius: var(--r-md);
+  border-left: 3px solid var(--gold);
+  background: var(--gold-dim);
+  font-size: 0.82rem;
+  color: var(--text-2);
+  line-height: 1.75;
+  margin-bottom: 28px;
+}
+.footer-notice strong {
+  color: var(--gold);
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+
 .footer-disclaimer {
   font-size: 0.75rem;
   color: var(--text-3);
