@@ -157,7 +157,7 @@
           1 0 1.27.2 2.47.57 3.58.11.35.02.74-.24 1.02L6.6 10.8z"/>
       </svg>
     </a>
-    <a href="#" class="float-btn float-kakao" title="카카오톡 채널" aria-label="카카오톡 채널">
+    <a href="http://pf.kakao.com/_jxgYxin" target="_blank" rel="noopener noreferrer" class="float-btn float-kakao" title="카카오톡 채널" aria-label="카카오톡 채널">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M12 3C6.48 3 2 6.69 2 11.25c0 2.94 1.95 5.52 4.9 7.02
           -.2.74-.74 2.7-.84 3.11-.13.5.18.49.38.36.15-.1 2.43-1.64
