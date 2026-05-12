@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="청심연한의원 오시는 길 — 서울 마포구 상암동 위치, 지하철·버스·주차 안내." />
+  <title>오시는 길 | 상암동청심연한의원</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* Kakao Map iframe override */
+    .map-frame {
+      width: 100%;
+      height: 400px;
+      border-radius: var(--r-lg);
+      border: 1px solid var(--border-gold);
+      overflow: hidden;
+      margin-bottom: 40px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header id="header">
+    <nav class="nav-inner">
+      <a href="index.html" class="nav-logo">
+        <span class="logo-ko">청심연한의원</span>
+        <span class="logo-sub">상암동 · 근골격계 전문</span>
+      </a>
+      <div class="nav-links">
+        <a href="index.html">홈</a>
+        <a href="about.html">원장 소개</a>
+        <a href="treatment.html">진료 프로그램</a>
+        <a href="location.html">오시는 길</a>
+        <a href="contact.html">예약·문의</a>
+      </div>
+      <a href="contact.html" class="btn btn-gold btn-sm nav-cta">예약하기</a>
+      <button class="nav-hamburger" aria-label="메뉴 열기">
+        <span></span><span></span><span></span>
+      </button>
+    </nav>
+  </header>
+  <nav class="nav-drawer">
+    <a href="index.html">🏠&nbsp; 홈</a>
+    <a href="about.html">👨‍⚕️&nbsp; 원장 소개</a>
+    <a href="treatment.html">💊&nbsp; 진료 프로그램</a>
+    <a href="location.html">📍&nbsp; 오시는 길</a>
+    <a href="contact.html" class="drawer-cta">📅&nbsp; 예약·문의</a>
+  </nav>
+
+  <!-- PAGE HERO -->
+  <section class="page-hero">
+    <div class="container">
+      <div class="breadcrumb">
+        <a href="index.html">홈</a> › <span>오시는 길</span>
+      </div>
+      <h1>오시는 길</h1>
+      <p>서울 마포구 상암동에 위치하여 대중교통으로 편리하게 방문하실 수 있습니다.</p>
+    </div>
+  </section>
+
+  <!-- MAP & INFO -->
+  <section class="section">
+    <div class="container">
+
+      <!-- 지도 영역 -->
+      <div class="map-wrapper fade-up" id="mapArea">
+        <div class="map-icon">📍</div>
+        <p>지도를 불러오는 중입니다…</p>
+        <p style="font-size:0.78rem; margin-top:4px; color:var(--text-3);">
+          서울특별시 마포구 상암동 ○○○번지
+        </p>
+      </div>
+      <!-- 카카오맵/구글맵 embed 시 아래 주석 해제 후 위 mapArea 제거:
+      <iframe class="map-frame" src="https://map.kakao.com/..." allowfullscreen loading="lazy"></iframe>
+      -->
+
+      <!-- 주소 + 진료시간 -->
+      <div class="info-grid fade-up">
+        <div class="info-card">
+          <h3>위치 정보</h3>
+          <div class="info-row">
+            <span class="info-label">주소</span>
+            <span class="info-val">서울특별시 마포구 상암동<br>○○○번지 ○층</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">전화</span>
+            <span class="info-val highlight">
+              <a href="tel:02-0000-0000" style="color:inherit;">02-0000-0000</a>
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">이메일</span>
+            <span class="info-val">info@cheongshimyeon.kr</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">주차</span>
+            <span class="info-val">건물 내 주차 가능 (30분 무료)<br>인근 공영주차장 이용 가능</span>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <h3>진료 시간</h3>
+          <table class="hours-table">
+            <tbody>
+              <tr>
+                <td>월요일</td>
+                <td>09:00 – 20:30</td>
+              </tr>
+              <tr>
+                <td>화요일</td>
+                <td>09:00 – 20:30</td>
+              </tr>
+              <tr>
+                <td>수요일</td>
+                <td>09:00 – 20:30</td>
+              </tr>
+              <tr>
+                <td>목요일</td>
+                <td>09:00 – 20:30</td>
+              </tr>
+              <tr>
+                <td>금요일</td>
+                <td>09:00 – 20:30</td>
+              </tr>
+              <tr>
+                <td>토요일</td>
+                <td>09:00 – 13:00</td>
+              </tr>
+              <tr class="closed">
+                <td>일요일</td>
+                <td>휴진</td>
+              </tr>
+              <tr class="closed">
+                <td>공휴일</td>
+                <td>휴진</td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="font-size:0.8rem; color:var(--text-3); margin-top:12px;">
+            ※ 점심시간: 13:00 – 14:00 (진료 없음)
+          </p>
+        </div>
+      </div>
+
+      <!-- 교통편 안내 -->
+      <div style="margin-top:40px;">
+        <h2 class="fade-up" style="font-size:1.2rem; margin-bottom:24px;">교통편 안내</h2>
+
+        <div class="info-grid fade-up">
+          <div class="info-card">
+            <h3>대중교통</h3>
+            <div class="transport-list">
+              <div class="transport-item">
+                <span class="transport-badge badge-subway">지하철</span>
+                <p>
+                  <strong style="color:var(--text-1);">6호선 마포구청역</strong> 하차 후 도보 ○분<br>
+                  <strong style="color:var(--text-1);">6호선 월드컵경기장역</strong> 하차 후 도보 ○분
+                </p>
+              </div>
+              <div class="transport-item">
+                <span class="transport-badge badge-bus">버스</span>
+                <p>
+                  <strong style="color:var(--text-1);">○○○, ○○○번</strong> 상암동주민센터 정류장 하차<br>
+                  <strong style="color:var(--text-1);">○○○번</strong> 월드컵공원입구 정류장 하차
+                </p>
+              </div>
+              <div class="transport-item">
+                <span class="transport-badge badge-walk">도보</span>
+                <p>○○○역 ○번 출구에서 도보 약 ○분</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-card">
+            <h3>자가용 안내</h3>
+            <div class="transport-list">
+              <div class="transport-item">
+                <span class="transport-badge badge-walk">내비</span>
+                <p>
+                  내비게이션에 <strong style="color:var(--text-1);">"청심연한의원"</strong> 또는<br>
+                  <strong style="color:var(--text-1);">"마포구 상암동 ○○○"</strong>으로 검색
+                </p>
+              </div>
+              <div class="transport-item">
+                <span class="transport-badge badge-walk">주차</span>
+                <p>
+                  건물 지하 주차장 이용 가능<br>
+                  진료 확인 시 <strong style="color:var(--text-1);">30분 무료</strong> 주차권 제공<br>
+                  추가: 10분당 ○○○원
+                </p>
+              </div>
+            </div>
+            <div class="notice" style="margin-top:16px; font-size:0.82rem;">
+              <strong>주차 팁:</strong> 방문 전 전화 시 주차 가능 여부 확인을 권장드립니다.
+              인근 상암 월드컵공원 공영주차장도 이용 가능합니다.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- QUICK CTA -->
+  <section class="section-sm">
+    <div class="container">
+      <div class="cta-banner fade-up">
+        <h2>방문 전 예약을 권장합니다</h2>
+        <p>예약 없이도 방문 가능하지만, 대기 시간 단축을 위해 예약을 권장드립니다.</p>
+        <div class="actions">
+          <a href="contact.html" class="btn btn-gold btn-lg">온라인 예약</a>
+          <a href="tel:02-0000-0000" class="btn btn-outline btn-lg">📞 전화 예약</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer id="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="logo-ko">청심연한의원</div>
+          <div class="logo-sub">CHEONGSHIMYEON KOREAN MEDICINE</div>
+          <p>서울 마포구 상암동에 위치한 근골격계 전문 한의원입니다.<br>몸의 균형을 회복하고 건강한 일상으로 돌아오세요.</p>
+        </div>
+        <div class="footer-col">
+          <h4>진료</h4>
+          <ul>
+            <li><a href="treatment.html">손목 / 등 / 목</a></li>
+            <li><a href="treatment.html">승모근 / 목디스크</a></li>
+            <li><a href="treatment.html">발목 / 수술후유착</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>진료시간</h4>
+          <div class="hours-mini">
+            <p>평일 <span>09:00 – 18:00</span></p>
+            <p>야간 <span>18:00 – 20:30</span></p>
+            <p>토요일 <span>09:00 – 13:00</span></p>
+            <p>일요일 <span>휴진</span></p>
+          </div>
+        </div>
+        <div class="footer-col">
+          <h4>바로가기</h4>
+          <ul>
+            <li><a href="about.html">원장 소개</a></li>
+            <li><a href="location.html">오시는 길</a></li>
+            <li><a href="contact.html">예약·문의</a></li>
+          </ul>
+        </div>
+      </div>
+      <p class="footer-disclaimer">
+        본 웹사이트의 정보는 의학적 진단·처방을 대체하지 않습니다.
+        증상이 있으시면 반드시 전문가와 상담하시기 바랍니다.
+      </p>
+      <div class="footer-bottom">
+        <p>서울특별시 마포구 상암동 ○○○ | 대표전화: 02-0000-0000</p>
+        <p>© 2025 청심연한의원. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
