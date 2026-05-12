@@ -3,291 +3,425 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="상암동청심연한의원 — 근골격계 통증 전문 한의원. 손목·목·등·승모근·발목·목디스크·수술후유착 치료." />
-  <title>상암동청심연한의원 | 근골격계 통증 전문</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <meta name="description" content="상암동청심연한의원 — 근골격계 통증 전문 한의원. 홈페이지 오픈 준비중입니다." />
+  <title>상암동청심연한의원 | 오픈 준비중</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
+  <style>
+    /* ── Reset ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #07111f;
+      color: #e8edf5;
+      min-height: 100vh;
+      min-height: 100svh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── Animated background ────────────────────────────── */
+    .bg-glow {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 10%, rgba(78, 205, 196, 0.09) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 85% 85%, rgba(201, 168, 76, 0.05) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 40% at 10% 60%, rgba(13, 33, 55, 0.6) 0%, transparent 60%);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black 20%, transparent 80%);
+      -webkit-mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black 20%, transparent 80%);
+      z-index: 0;
+      pointer-events: none;
+    }
+    /* Floating orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.12;
+      z-index: 0;
+      pointer-events: none;
+      animation: orbFloat 12s ease-in-out infinite;
+    }
+    .orb-1 { width: 400px; height: 400px; background: #4ecdc4; top: -100px; left: -100px; animation-delay: 0s; }
+    .orb-2 { width: 300px; height: 300px; background: #c9a84c; bottom: -80px; right: -80px; animation-delay: -4s; }
+    .orb-3 { width: 200px; height: 200px; background: #4ecdc4; bottom: 20%; left: 60%; animation-delay: -8s; }
+    @keyframes orbFloat {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33%       { transform: translate(30px, -20px) scale(1.05); }
+      66%       { transform: translate(-15px, 25px) scale(0.97); }
+    }
+
+    /* ── Layout ─────────────────────────────────────────── */
+    .wrap {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      text-align: center;
+    }
+    .inner {
+      max-width: 560px;
+      width: 100%;
+      animation: fadeUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Badge ──────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 18px;
+      border-radius: 99px;
+      background: rgba(78, 205, 196, 0.10);
+      border: 1px solid rgba(78, 205, 196, 0.28);
+      color: #4ecdc4;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      margin-bottom: 28px;
+      animation: pulseBadge 3s ease-in-out infinite;
+    }
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #4ecdc4;
+      animation: blinkDot 1.4s ease-in-out infinite;
+    }
+    @keyframes pulseBadge {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(78, 205, 196, 0); }
+      50%       { box-shadow: 0 0 0 10px rgba(78, 205, 196, 0.06); }
+    }
+    @keyframes blinkDot {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    /* ── Clinic name ────────────────────────────────────── */
+    .clinic-name {
+      font-size: clamp(1.7rem, 7vw, 3rem);
+      font-weight: 800;
+      color: #c9a84c;
+      letter-spacing: 0.05em;
+      line-height: 1.2;
+      margin-bottom: 10px;
+      word-break: keep-all;
+    }
+    .clinic-en {
+      font-size: 0.72rem;
+      color: #4e6882;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .clinic-specialty {
+      font-size: 0.9rem;
+      color: #8aa4c0;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    /* ── Gold divider ───────────────────────────────────── */
+    .gold-line {
+      width: 48px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #c9a84c 40%, #c9a84c 60%, transparent);
+      margin: 20px auto 32px;
+      border: none;
+    }
+
+    /* ── Message ────────────────────────────────────────── */
+    .message {
+      font-size: 0.95rem;
+      color: #8aa4c0;
+      line-height: 1.85;
+      margin-bottom: 40px;
+      word-break: keep-all;
+    }
+
+    /* ── Countdown ──────────────────────────────────────── */
+    .countdown {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 44px;
+    }
+    .cd-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 9px;
+    }
+    .cd-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 76px;
+      height: 76px;
+      background: #0d2137;
+      border: 1px solid rgba(78, 205, 196, 0.22);
+      border-radius: 12px;
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: #e8edf5;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+      position: relative;
+      overflow: hidden;
+      transition: color 0.25s ease, border-color 0.25s ease;
+    }
+    .cd-box.tick {
+      color: #4ecdc4;
+      border-color: rgba(78, 205, 196, 0.5);
+    }
+    .cd-box::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      top: 50%;
+      height: 1px;
+      background: rgba(78, 205, 196, 0.08);
+    }
+    .cd-label {
+      font-size: 0.7rem;
+      color: #4e6882;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+    .cd-sep {
+      font-size: 1.8rem;
+      font-weight: 200;
+      color: rgba(78, 205, 196, 0.35);
+      line-height: 1;
+      margin-bottom: 30px;
+      letter-spacing: -0.05em;
+    }
+    /* Opened state */
+    .countdown-opened {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 44px;
+      padding: 16px 28px;
+      border-radius: 12px;
+      background: rgba(78,205,196,0.08);
+      border: 1px solid rgba(78,205,196,0.25);
+      color: #4ecdc4;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    /* ── Phone CTA ──────────────────────────────────────── */
+    .cta-label {
+      font-size: 0.75rem;
+      color: #4e6882;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .phone-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 15px 36px;
+      background: #c9a84c;
+      color: #07111f;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+      margin-bottom: 12px;
+    }
+    .phone-btn:hover {
+      background: #dfc068;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(201, 168, 76, 0.35);
+    }
+    .phone-btn:active { transform: translateY(0); }
+    .phone-note {
+      font-size: 0.8rem;
+      color: #4e6882;
+      line-height: 1.7;
+    }
+
+    /* ── Footer strip ───────────────────────────────────── */
+    .cs-footer {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 18px 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .cs-footer span {
+      font-size: 0.75rem;
+      color: #2e4a63;
+    }
+    .cs-footer span.sep { color: #1e3348; }
+
+    /* ── Responsive ─────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .cd-box   { width: 62px; height: 62px; font-size: 1.55rem; border-radius: 9px; }
+      .cd-sep   { font-size: 1.5rem; margin-bottom: 24px; }
+      .cd-label { font-size: 0.65rem; }
+      .countdown { gap: 6px; }
+      .phone-btn { font-size: 1.05rem; padding: 14px 28px; }
+    }
+    @media (max-width: 360px) {
+      .cd-box { width: 54px; height: 54px; font-size: 1.3rem; }
+      .countdown { gap: 4px; }
+      .cd-sep { font-size: 1.3rem; }
+    }
+  </style>
 </head>
 <body>
 
-  <!-- ======================================================
-       HEADER
-  ======================================================= -->
-  <header id="header">
-    <nav class="nav-inner">
-      <a href="index.html" class="nav-logo">
-        <span class="logo-ko">청심연한의원</span>
-        <span class="logo-sub">상암동 · 근골격계 전문</span>
+  <div class="bg-glow"></div>
+  <div class="bg-grid"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="wrap">
+    <div class="inner">
+
+      <!-- Badge -->
+      <div class="badge">
+        <span class="badge-dot"></span>
+        홈페이지 준비중
+      </div>
+
+      <!-- Clinic name -->
+      <h1 class="clinic-name">상암동청심연한의원</h1>
+      <p class="clinic-en">Cheongshimyeon Korean Medicine</p>
+      <p class="clinic-specialty">근골격계 통증 · 기능이상 전문</p>
+
+      <hr class="gold-line" />
+
+      <!-- Message -->
+      <p class="message">
+        더 나은 서비스로 찾아뵙기 위해 홈페이지를 준비하고 있습니다.<br>
+        진료 예약 및 문의는 아래 전화번호로 연락 주세요.
+      </p>
+
+      <!-- Countdown -->
+      <div class="countdown" id="countdown">
+        <div class="cd-unit">
+          <div class="cd-box" id="cd-days">00</div>
+          <span class="cd-label">일</span>
+        </div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit">
+          <div class="cd-box" id="cd-hours">00</div>
+          <span class="cd-label">시간</span>
+        </div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit">
+          <div class="cd-box" id="cd-mins">00</div>
+          <span class="cd-label">분</span>
+        </div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit">
+          <div class="cd-box" id="cd-secs">00</div>
+          <span class="cd-label">초</span>
+        </div>
+      </div>
+      <div class="countdown-opened" id="countdown-opened">
+        ✨ 홈페이지가 오픈되었습니다!
+      </div>
+
+      <!-- Phone CTA -->
+      <p class="cta-label">예약 및 문의</p>
+      <a href="tel:02-6393-5337" class="phone-btn">
+        📞 02-6393-5337
       </a>
-      <div class="nav-links">
-        <a href="index.html">홈</a>
-        <a href="about.html">원장 소개</a>
-        <a href="treatment.html">진료 프로그램</a>
-        <a href="location.html">오시는 길</a>
-        <a href="contact.html">예약·문의</a>
-      </div>
-      <a href="contact.html" class="btn btn-gold btn-sm nav-cta">예약하기</a>
-      <button class="nav-hamburger" aria-label="메뉴 열기">
-        <span></span><span></span><span></span>
-      </button>
-    </nav>
-  </header>
-
-  <!-- Mobile Drawer -->
-  <nav class="nav-drawer">
-    <a href="index.html">🏠&nbsp; 홈</a>
-    <a href="about.html">👨‍⚕️&nbsp; 원장 소개</a>
-    <a href="treatment.html">💊&nbsp; 진료 프로그램</a>
-    <a href="location.html">📍&nbsp; 오시는 길</a>
-    <a href="contact.html" class="drawer-cta">📅&nbsp; 예약·문의</a>
-  </nav>
-
-  <!-- ======================================================
-       HERO
-  ======================================================= -->
-  <section class="hero">
-    <div class="hero-bg"></div>
-    <div class="hero-grid"></div>
-    <div class="hero-content container">
-      <div class="hero-badge">근골격계 통증 · 기능이상 전문</div>
-      <h1>
-        통증에서 해방,
-        <span class="highlight">일상으로의 복귀</span>
-      </h1>
-      <p class="hero-lead">
-        청심연한의원은 손목·목·등·승모근·발목 등<br>
-        근골격계 통증과 기능이상을 정밀하게 진단하고<br>
-        한의학적 치료로 근본적인 회복을 돕습니다.
+      <p class="phone-note">
+        평일 09:00 – 20:30 &nbsp;|&nbsp; 토요일 09:00 – 13:00
       </p>
-      <div class="hero-actions">
-        <a href="contact.html" class="btn btn-gold btn-lg">지금 예약하기</a>
-        <a href="treatment.html" class="btn btn-outline btn-lg">진료 프로그램 보기</a>
-      </div>
-      <div class="hero-stats">
-        <div class="stat-item">
-          <span class="stat-num">7</span>
-          <span class="stat-label">전문 진료 분야</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-num">1:1</span>
-          <span class="stat-label">맞춤 진료</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-num">야간</span>
-          <span class="stat-label">진료 가능</span>
-        </div>
-      </div>
-    </div>
-    <div class="hero-scroll">SCROLL</div>
-  </section>
 
-  <!-- ======================================================
-       TREATMENT OVERVIEW
-  ======================================================= -->
-  <section class="section" style="background: var(--bg-1);">
-    <div class="container">
-      <div class="section-header fade-up">
-        <div class="badge badge-gold" style="margin-bottom:12px;">진료 프로그램</div>
-        <h2>근골격계 전문 진료</h2>
-        <div class="gold-line"></div>
-        <p>통증의 원인을 정확히 파악하고, 개인 맞춤형 한의 치료를 제공합니다.</p>
-      </div>
-      <div class="treat-grid">
-        <div class="treat-card fade-up fade-up-delay-1">
-          <div class="treat-icon">🤲</div>
-          <h3>손목</h3>
-          <p>손목 통증·건초염·터널증후군·과사용 손상</p>
-        </div>
-        <div class="treat-card fade-up fade-up-delay-2">
-          <div class="treat-icon">🦴</div>
-          <h3>등</h3>
-          <p>흉추 통증·등 근육 긴장·자세 불균형 교정</p>
-        </div>
-        <div class="treat-card fade-up fade-up-delay-3">
-          <div class="treat-icon">🎯</div>
-          <h3>목</h3>
-          <p>경추 통증·뒷목 결림·두통 연관 목 통증</p>
-        </div>
-        <div class="treat-card fade-up fade-up-delay-4">
-          <div class="treat-icon">💆</div>
-          <h3>승모근</h3>
-          <p>승모근 긴장·어깨 결림·만성 긴장성 두통</p>
-        </div>
-        <div class="treat-card fade-up">
-          <div class="treat-icon">🧠</div>
-          <h3>목디스크</h3>
-          <p>경추 추간판 탈출증·팔 저림·방사통</p>
-        </div>
-        <div class="treat-card fade-up fade-up-delay-1">
-          <div class="treat-icon">🦶</div>
-          <h3>발목</h3>
-          <p>발목 염좌·만성 불안정성·아킬레스건염</p>
-        </div>
-        <div class="treat-card fade-up fade-up-delay-2">
-          <div class="treat-icon">🩹</div>
-          <h3>수술후 유착</h3>
-          <p>수술 후 유착·기능 회복·흉터 관리</p>
-        </div>
-      </div>
-      <div style="text-align:center; margin-top:36px;">
-        <a href="treatment.html" class="btn btn-outline">전체 진료 프로그램 보기 →</a>
-      </div>
     </div>
-  </section>
 
-  <!-- ======================================================
-       WHY CHEONGSHIMYEON
-  ======================================================= -->
-  <section class="section">
-    <div class="container">
-      <div class="section-header fade-up">
-        <div class="badge badge-green" style="margin-bottom:12px;">청심연의 강점</div>
-        <h2>왜 청심연한의원인가요?</h2>
-        <div class="gold-line"></div>
-      </div>
-      <div class="grid-3">
-        <div class="card fade-up fade-up-delay-1">
-          <div class="card-icon">🔍</div>
-          <h3>정밀 진단</h3>
-          <p>증상의 표면이 아닌 근본 원인을 파악합니다. 상세한 문진과 기능 검사를 통해 개인별 맞춤 치료 계획을 수립합니다.</p>
-        </div>
-        <div class="card fade-up fade-up-delay-2">
-          <div class="card-icon">⚕️</div>
-          <h3>한양방 통합 접근</h3>
-          <p>침·뜸·부항·추나·한약 등 다양한 한의 치료를 유기적으로 결합하여 빠르고 지속적인 회복 효과를 제공합니다.</p>
-        </div>
-        <div class="card fade-up fade-up-delay-3">
-          <div class="card-icon">🌙</div>
-          <h3>야간 진료</h3>
-          <p>직장인·학생도 불편없이 방문할 수 있도록 야간 진료 시간을 운영합니다. 바쁜 일상 속에서도 치료를 이어가세요.</p>
-        </div>
-        <div class="card fade-up fade-up-delay-1">
-          <div class="card-icon">📋</div>
-          <h3>치료 연속성</h3>
-          <p>매 진료마다 경과를 꼼꼼히 기록하고, 상태 변화에 맞춰 치료 계획을 조정합니다.</p>
-        </div>
-        <div class="card fade-up fade-up-delay-2">
-          <div class="card-icon">🏃</div>
-          <h3>기능 회복 중심</h3>
-          <p>단순 통증 완화를 넘어 일상·운동·업무로 완전히 복귀할 수 있도록 기능 회복을 목표로 치료합니다.</p>
-        </div>
-        <div class="card fade-up fade-up-delay-3">
-          <div class="card-icon">📱</div>
-          <h3>편리한 예약</h3>
-          <p>전화 또는 온라인으로 간편하게 예약하세요. 대기 시간을 최소화한 효율적인 진료 시스템을 운영합니다.</p>
-        </div>
-      </div>
-    </div>
-  </section>
+    <!-- Footer -->
+    <footer class="cs-footer">
+      <span>상암동청심연한의원</span>
+      <span class="sep">·</span>
+      <span>서울시 마포구 월드컵북로 402 케이이티빌딩 216호·217호</span>
+      <span class="sep">·</span>
+      <span>© 2025</span>
+    </footer>
+  </div>
 
-  <!-- ======================================================
-       PROCESS
-  ======================================================= -->
-  <section class="section section-sm" style="background: var(--bg-1);">
-    <div class="container">
-      <div class="section-header fade-up">
-        <h2>진료 프로세스</h2>
-        <div class="gold-line"></div>
-        <p>처음 방문부터 회복까지, 체계적인 케어 과정을 안내해 드립니다.</p>
-      </div>
-      <div class="steps fade-up">
-        <div class="step">
-          <div class="step-num">01</div>
-          <h4>예약 및 접수</h4>
-          <p>전화·온라인 예약 후 내원 접수</p>
-        </div>
-        <div class="step">
-          <div class="step-num">02</div>
-          <h4>상세 문진</h4>
-          <p>증상·생활습관·과거력 파악</p>
-        </div>
-        <div class="step">
-          <div class="step-num">03</div>
-          <h4>기능 검사</h4>
-          <p>동작 범위·근력·압통 검사</p>
-        </div>
-        <div class="step">
-          <div class="step-num">04</div>
-          <h4>치료 계획</h4>
-          <p>개인별 맞춤 치료 방향 설명</p>
-        </div>
-        <div class="step">
-          <div class="step-num">05</div>
-          <h4>치료 진행</h4>
-          <p>침·추나·물리요법 등 복합 치료</p>
-        </div>
-        <div class="step">
-          <div class="step-num">06</div>
-          <h4>경과 관리</h4>
-          <p>상태 모니터링 및 재발 예방</p>
-        </div>
-      </div>
-    </div>
-  </section>
+  <script>
+    // ── 오픈 예정일 설정 (YYYY, MM-1, DD, HH, mm, ss) ──
+    const TARGET = new Date(2026, 8, 1, 9, 0, 0); // 2026-09-01 09:00
 
-  <!-- ======================================================
-       CTA BANNER
-  ======================================================= -->
-  <section class="section">
-    <div class="container">
-      <div class="cta-banner fade-up">
-        <h2>통증을 참지 마세요</h2>
-        <p>오늘 바로 전화하시거나 온라인으로 예약하세요.<br>첫 방문 시 상세 상담을 무료로 진행합니다.</p>
-        <div class="actions">
-          <a href="contact.html" class="btn btn-gold btn-lg">온라인 예약</a>
-          <a href="tel:02-6393-5337" class="btn btn-outline btn-lg">📞 전화 예약</a>
-        </div>
-      </div>
-    </div>
-  </section>
+    const $ = id => document.getElementById(id);
+    const pad = n => String(n).padStart(2, '0');
 
-  <!-- ======================================================
-       FOOTER
-  ======================================================= -->
-  <footer id="footer">
-    <div class="container">
-      <div class="footer-top">
-        <div class="footer-brand">
-          <div class="logo-ko">청심연한의원</div>
-          <div class="logo-sub">CHEONGSHIMYEON KOREAN MEDICINE</div>
-          <p>서울 마포구 상암동에 위치한 근골격계 전문 한의원입니다.<br>몸의 균형을 회복하고 건강한 일상으로 돌아오세요.</p>
-        </div>
-        <div class="footer-col">
-          <h4>진료</h4>
-          <ul>
-            <li><a href="treatment.html">손목 / 등 / 목</a></li>
-            <li><a href="treatment.html">승모근 / 목디스크</a></li>
-            <li><a href="treatment.html">발목 / 수술후유착</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>진료시간</h4>
-          <div class="hours-mini">
-            <p>평일 <span>09:00 – 18:00</span></p>
-            <p>야간 <span>18:00 – 20:30</span></p>
-            <p>토요일 <span>09:00 – 13:00</span></p>
-            <p>일요일 <span>휴진</span></p>
-          </div>
-        </div>
-        <div class="footer-col">
-          <h4>바로가기</h4>
-          <ul>
-            <li><a href="about.html">원장 소개</a></li>
-            <li><a href="location.html">오시는 길</a></li>
-            <li><a href="contact.html">예약·문의</a></li>
-          </ul>
-        </div>
-      </div>
-      <p class="footer-disclaimer">
-        본 웹사이트의 정보는 의학적 진단·처방을 대체하지 않습니다.
-        증상이 있으시면 반드시 전문가와 상담하시기 바랍니다.
-      </p>
-      <div class="footer-bottom">
-        <p>서울시 마포구 월드컵북로 402 케이이티빌딩 216호·217호 | 대표전화: 02-6393-5337</p>
-        <p>© 2025 상암동청심연한의원. All rights reserved.</p>
-      </div>
-    </div>
-  </footer>
+    function tick() {
+      const now  = new Date();
+      const diff = TARGET - now;
 
-  <script src="js/main.js"></script>
+      if (diff <= 0) {
+        $('countdown').style.display = 'none';
+        $('countdown-opened').style.display = 'flex';
+        return;
+      }
+
+      const days  = Math.floor(diff / 86400000);
+      const hours = Math.floor((diff % 86400000) / 3600000);
+      const mins  = Math.floor((diff % 3600000)  / 60000);
+      const secs  = Math.floor((diff % 60000)    / 1000);
+
+      update('cd-days',  pad(days));
+      update('cd-hours', pad(hours));
+      update('cd-mins',  pad(mins));
+      update('cd-secs',  pad(secs));
+    }
+
+    // Flash mint color on the seconds box every tick
+    function update(id, val) {
+      const el = $(id);
+      if (el.textContent !== val) {
+        el.textContent = val;
+        if (id === 'cd-secs') {
+          el.classList.add('tick');
+          setTimeout(() => el.classList.remove('tick'), 220);
+        }
+      }
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  </script>
 </body>
 </html>
