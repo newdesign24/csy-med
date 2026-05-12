@@ -14,9 +14,6 @@
       border: 1px solid var(--border-gold);
       display: block;
     }
-    @media (max-width: 480px) {
-      .map-frame { height: 400px; border-radius: var(--r-md); }
-    }
     .map-btns {
       display: flex;
       gap: 12px;
@@ -55,9 +52,20 @@
       box-shadow: 0 2px 12px rgba(66, 133, 244, 0.3);
     }
     .map-btn-google:hover { box-shadow: 0 4px 20px rgba(66, 133, 244, 0.45); }
-    @media (max-width: 480px) {
+    /* PC: iframe 표시, static 이미지 숨김 */
+    .map-static { display: none; }
+
+    @media (max-width: 767px) {
+      .map-frame  { display: none; }
+      .map-static {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: var(--r-md);
+        border: 1px solid var(--border-gold);
+      }
       .map-btns { flex-direction: column; }
-      .map-btn  { justify-content: center; }
+      .map-btn  { justify-content: center; width: 100%; box-sizing: border-box; }
     }
   </style>
 </head>
@@ -115,6 +123,12 @@
           loading="lazy"
           title="상암동청심연한의원 위치"
         ></iframe>
+        <img
+          class="map-static"
+          src="https://staticmap.openstreetmap.de/staticmap.php?center=37.5794,126.8942&zoom=16&size=800x400&markers=37.5794,126.8942,red"
+          alt="상암동청심연한의원 위치 지도"
+          loading="lazy"
+        />
         <div class="map-btns">
           <a href="https://map.naver.com/v5/search/%EC%83%81%EC%95%94%EB%8F%99%EC%B2%AD%EC%8B%AC%EC%97%B0%ED%95%9C%EC%9D%98%EC%9B%90"
              target="_blank" rel="noopener noreferrer" class="map-btn map-btn-naver">
