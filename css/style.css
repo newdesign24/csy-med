@@ -523,23 +523,27 @@ h1, h2, h3, h4 {
    ============================================================ */
 .steps {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0;
   position: relative;
 }
 .step {
-  padding: 32px 24px;
+  padding: 28px 12px;
   text-align: center;
   position: relative;
 }
+/* PC: 오른쪽 화살표 — 골드 솔리드 */
 .step::after {
-  content: '→';
+  content: '';
   position: absolute;
-  right: -8px;
+  right: -11px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--mint-border);
-  font-size: 1.2rem;
+  width: 22px;
+  height: 22px;
+  background: var(--gold);
+  clip-path: polygon(0 36%, 58% 36%, 58% 14%, 100% 50%, 58% 86%, 58% 64%, 0 64%);
+  z-index: 1;
 }
 .step:last-child::after { display: none; }
 .step-num {
@@ -557,6 +561,27 @@ h1, h2, h3, h4 {
 }
 .step h4 { font-size: 0.9rem; margin-bottom: 6px; }
 .step p   { font-size: 0.8rem; color: var(--text-3); }
+
+/* 모바일: 세로 배치 + 아래 화살표 — 민트 솔리드 */
+@media (max-width: 767px) {
+  .steps {
+    grid-template-columns: 1fr;
+  }
+  .step {
+    padding: 24px 20px;
+  }
+  .step::after {
+    right: auto;
+    left: 50%;
+    top: auto;
+    bottom: -11px;
+    transform: translateX(-50%);
+    width: 22px;
+    height: 22px;
+    background: var(--mint);
+    clip-path: polygon(36% 0, 64% 0, 64% 58%, 86% 58%, 50% 100%, 14% 58%, 36% 58%);
+  }
+}
 
 /* ============================================================
    CTA Banner
