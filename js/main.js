@@ -4,8 +4,9 @@
 
 /* ── Font size: 저장된 크기 즉시 복원 (FOUC 방지) ─────────── */
 (function () {
-  const SIZES = [16, 18, 20];
-  const i = Math.min(parseInt(localStorage.getItem('csy_fs') || '0'), SIZES.length - 1);
+  const SIZES = [14, 16, 18, 20];
+  const stored = localStorage.getItem('csy_fs');
+  const i = Math.min(stored !== null ? parseInt(stored) : 1, SIZES.length - 1);
   document.documentElement.style.fontSize = SIZES[i] + 'px';
 })();
 
@@ -137,8 +138,9 @@
   }
 
   /* ── Floating Action Buttons ───────────────────────────── */
-  const SIZES = [16, 18, 20];
-  let sizeIdx = Math.min(parseInt(localStorage.getItem('csy_fs') || '0'), SIZES.length - 1);
+  const SIZES = [14, 16, 18, 20];
+  const _stored = localStorage.getItem('csy_fs');
+  let sizeIdx = Math.min(_stored !== null ? parseInt(_stored) : 1, SIZES.length - 1);
 
   function applySize(i) {
     sizeIdx = Math.max(0, Math.min(i, SIZES.length - 1));
@@ -146,17 +148,33 @@
     localStorage.setItem('csy_fs', sizeIdx);
   }
 
+  function showToast(msg) {
+    let toast = document.getElementById('csy-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'csy-toast';
+      toast.className = 'csy-toast';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+
   const fab = document.createElement('div');
   fab.className = 'float-group';
   fab.innerHTML = `
-    <a href="tel:02-6393-5337" class="float-btn float-phone" title="전화 예약" aria-label="전화 예약">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.27-.27.67-.36
-          1.02-.24 1.12.37 2.32.57 3.58.57.55 0 1 .45 1 1V20c0 .55-.45
-          1-1 1C10.18 21 3 13.82 3 5c0-.55.45-1 1-1h3.5c.55 0 1 .45 1
-          1 0 1.27.2 2.47.57 3.58.11.35.02.74-.24 1.02L6.6 10.8z"/>
-      </svg>
-    </a>
+    <div class="float-phone-wrap">
+      <a href="tel:02-6393-5337" class="float-btn float-phone" id="csy-phone-btn" title="전화 예약" aria-label="전화 예약">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.27-.27.67-.36
+            1.02-.24 1.12.37 2.32.57 3.58.57.55 0 1 .45 1 1V20c0 .55-.45
+            1-1 1C10.18 21 3 13.82 3 5c0-.55.45-1 1-1h3.5c.55 0 1 .45 1
+            1 0 1.27.2 2.47.57 3.58.11.35.02.74-.24 1.02L6.6 10.8z"/>
+        </svg>
+      </a>
+      <span class="float-phone-tip">02-6393-5337</span>
+    </div>
     <a href="http://pf.kakao.com/_jxgYxin" target="_blank" rel="noopener noreferrer" class="float-btn float-kakao" title="카카오톡 채널" aria-label="카카오톡 채널">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M12 3C6.48 3 2 6.69 2 11.25c0 2.94 1.95 5.52 4.9 7.02
@@ -165,11 +183,19 @@
           C22 6.69 17.52 3 12 3z"/>
       </svg>
     </a>
-    <div class="float-font-row">
-      <button class="float-btn float-font" id="csy-font-down" title="글자 작게" aria-label="글자 작게">A−</button>
-      <button class="float-btn float-font" id="csy-font-up"   title="글자 크게" aria-label="글자 크게">A+</button>
-    </div>`;
+    <button class="float-btn float-font" id="csy-font-up"   title="글자 크게" aria-label="글자 크게">A+</button>
+    <button class="float-btn float-font" id="csy-font-down" title="글자 작게" aria-label="글자 작게">A−</button>`;
   document.body.appendChild(fab);
+
+  /* PC: 클립보드 복사 + 토스트 / 모바일: tel: 그대로 */
+  document.getElementById('csy-phone-btn').addEventListener('click', (e) => {
+    if (navigator.maxTouchPoints === 0) {
+      e.preventDefault();
+      navigator.clipboard.writeText('02-6393-5337')
+        .then(() => showToast('번호가 복사되었습니다'))
+        .catch(() => showToast('02-6393-5337'));
+    }
+  });
 
   document.getElementById('csy-font-down').addEventListener('click', () => applySize(sizeIdx - 1));
   document.getElementById('csy-font-up').addEventListener('click',   () => applySize(sizeIdx + 1));

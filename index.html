@@ -327,9 +327,40 @@
       box-shadow: 0 3px 16px rgba(0, 0, 0, 0.5);
     }
     .float-btn:hover { transform: scale(1.1); }
-    .float-phone { background: #c9a84c; color: #07111f; }
+    .float-phone-wrap { position: relative; }
+    .float-phone { background: #4ecdc4; color: #07111f; }
+    .float-phone:hover { box-shadow: 0 4px 20px rgba(78, 205, 196, 0.55); }
+    .float-phone-tip {
+      position: absolute;
+      right: calc(100% + 10px);
+      top: 50%;
+      transform: translateY(-50%);
+      white-space: nowrap;
+      background: #0d2137;
+      color: #e8edf5;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(78, 205, 196, 0.3);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      font-family: 'Pretendard', sans-serif;
+    }
+    .float-phone-tip::after {
+      content: '';
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 5px solid transparent;
+      border-left-color: #0d2137;
+    }
+    @media (hover: hover) {
+      .float-phone-wrap:hover .float-phone-tip { opacity: 1; }
+    }
     .float-kakao { background: #FEE500; color: #3C1E1E; }
-    .float-font-row { display: flex; gap: 5px; }
     .float-font {
       width: 38px;
       height: 38px;
@@ -340,6 +371,25 @@
       font-weight: 700;
       font-family: inherit;
     }
+    .float-font:hover { background: #163052; }
+    .csy-toast {
+      position: fixed;
+      bottom: 90px;
+      right: 18px;
+      z-index: 9999;
+      background: #0d2137;
+      color: #4ecdc4;
+      font-size: 0.82rem;
+      font-family: 'Pretendard', sans-serif;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(78, 205, 196, 0.3);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .csy-toast.show { opacity: 1; transform: translateY(0); }
   </style>
 </head>
 <body>
@@ -422,14 +472,17 @@
 
   <!-- Floating buttons -->
   <div class="float-group">
-    <a href="tel:02-6393-5337" class="float-btn float-phone" title="전화 예약" aria-label="전화 예약">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.27-.27.67-.36
-          1.02-.24 1.12.37 2.32.57 3.58.57.55 0 1 .45 1 1V20c0 .55-.45
-          1-1 1C10.18 21 3 13.82 3 5c0-.55.45-1 1-1h3.5c.55 0 1 .45 1
-          1 0 1.27.2 2.47.57 3.58.11.35.02.74-.24 1.02L6.6 10.8z"/>
-      </svg>
-    </a>
+    <div class="float-phone-wrap">
+      <a href="tel:02-6393-5337" class="float-btn float-phone" id="csy-phone-btn" title="전화 예약" aria-label="전화 예약">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.27-.27.67-.36
+            1.02-.24 1.12.37 2.32.57 3.58.57.55 0 1 .45 1 1V20c0 .55-.45
+            1-1 1C10.18 21 3 13.82 3 5c0-.55.45-1 1-1h3.5c.55 0 1 .45 1
+            1 0 1.27.2 2.47.57 3.58.11.35.02.74-.24 1.02L6.6 10.8z"/>
+        </svg>
+      </a>
+      <span class="float-phone-tip">02-6393-5337</span>
+    </div>
     <a href="http://pf.kakao.com/_jxgYxin" target="_blank" rel="noopener noreferrer" class="float-btn float-kakao" title="카카오톡 채널" aria-label="카카오톡 채널">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M12 3C6.48 3 2 6.69 2 11.25c0 2.94 1.95 5.52 4.9 7.02
@@ -438,30 +491,52 @@
           C22 6.69 17.52 3 12 3z"/>
       </svg>
     </a>
-    <div class="float-font-row">
-      <button class="float-btn float-font" id="csy-font-down" title="글자 작게" aria-label="글자 작게">A−</button>
-      <button class="float-btn float-font" id="csy-font-up"   title="글자 크게" aria-label="글자 크게">A+</button>
-    </div>
+    <button class="float-btn float-font" id="csy-font-up"   title="글자 크게" aria-label="글자 크게">A+</button>
+    <button class="float-btn float-font" id="csy-font-down" title="글자 작게" aria-label="글자 작게">A−</button>
   </div>
 
   <script>
     // ── Font size restore (prevent FOUC) ──
     (function () {
-      const SIZES = [16, 18, 20];
-      const i = Math.min(parseInt(localStorage.getItem('csy_fs') || '0'), SIZES.length - 1);
+      const SIZES = [14, 16, 18, 20];
+      const stored = localStorage.getItem('csy_fs');
+      const i = Math.min(stored !== null ? parseInt(stored) : 1, SIZES.length - 1);
       document.documentElement.style.fontSize = SIZES[i] + 'px';
     })();
 
-    // ── Font size controls ──
-    const FS_SIZES = [16, 18, 20];
-    let fsSizeIdx = Math.min(parseInt(localStorage.getItem('csy_fs') || '0'), FS_SIZES.length - 1);
+    // ── Font size controls (4단계: 작게/기본/크게/매우크게) ──
+    const FS_SIZES = [14, 16, 18, 20];
+    (function () {
+      const stored = localStorage.getItem('csy_fs');
+      window._fsSizeIdx = Math.min(stored !== null ? parseInt(stored) : 1, FS_SIZES.length - 1);
+    })();
     function applyFontSize(i) {
-      fsSizeIdx = Math.max(0, Math.min(i, FS_SIZES.length - 1));
-      document.documentElement.style.fontSize = FS_SIZES[fsSizeIdx] + 'px';
-      localStorage.setItem('csy_fs', fsSizeIdx);
+      window._fsSizeIdx = Math.max(0, Math.min(i, FS_SIZES.length - 1));
+      document.documentElement.style.fontSize = FS_SIZES[window._fsSizeIdx] + 'px';
+      localStorage.setItem('csy_fs', window._fsSizeIdx);
     }
-    document.getElementById('csy-font-down').addEventListener('click', () => applyFontSize(fsSizeIdx - 1));
-    document.getElementById('csy-font-up').addEventListener('click',   () => applyFontSize(fsSizeIdx + 1));
+    function showToast(msg) {
+      let toast = document.getElementById('csy-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'csy-toast';
+        toast.className = 'csy-toast';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+    document.getElementById('csy-font-down').addEventListener('click', () => applyFontSize(window._fsSizeIdx - 1));
+    document.getElementById('csy-font-up').addEventListener('click',   () => applyFontSize(window._fsSizeIdx + 1));
+    document.getElementById('csy-phone-btn').addEventListener('click', function (e) {
+      if (navigator.maxTouchPoints === 0) {
+        e.preventDefault();
+        navigator.clipboard.writeText('02-6393-5337')
+          .then(() => showToast('번호가 복사되었습니다'))
+          .catch(() => showToast('02-6393-5337'));
+      }
+    });
 
     // ── 오픈 예정일 설정 (YYYY, MM-1, DD, HH, mm, ss) ──
     const TARGET = new Date(2026, 8, 1, 9, 0, 0); // 2026-09-01 09:00
