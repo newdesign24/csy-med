@@ -26,10 +26,10 @@
   --mint-dim:     rgba(78, 205, 196, 0.10);
   --mint-border:  rgba(78, 205, 196, 0.22);
 
-  /* ── Text */
-  --text-1: #e8edf5;
-  --text-2: #8aa4c0;
-  --text-3: #4e6882;
+  /* ── Text (본문 밝게) */
+  --text-1: #f0f0f0;
+  --text-2: #ccd6e4;
+  --text-3: #8098b4;
   --text-gold: #c9a84c;
 
   /* ── Borders */
@@ -1112,4 +1112,77 @@ textarea.form-control { resize: vertical; min-height: 120px; }
   .hero-actions .btn { width: 100%; justify-content: center; }
   .cta-banner .actions { flex-direction: column; }
   .cta-banner .actions .btn { width: 100%; justify-content: center; }
+}
+
+/* ============================================================
+   Floating Action Buttons
+   ============================================================ */
+.float-group {
+  position: fixed;
+  bottom: 24px;
+  right: 18px;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.float-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sans);
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  box-shadow: 0 3px 16px rgba(0, 0, 0, 0.5);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.float-btn:hover  { transform: scale(1.1); }
+.float-btn:active { transform: scale(0.94); }
+
+/* 전화 */
+.float-phone {
+  background: var(--gold);
+  color: #07111f;
+}
+.float-phone:hover { box-shadow: 0 4px 20px rgba(201, 168, 76, 0.55); }
+
+/* 카카오톡 */
+.float-kakao {
+  background: #FEE500;
+  color: #3C1E1E;
+}
+.float-kakao:hover { box-shadow: 0 4px 20px rgba(254, 229, 0, 0.45); }
+
+/* 글자 크기 row */
+.float-font-row {
+  display: flex;
+  gap: 5px;
+}
+.float-font {
+  width: 38px;
+  height: 38px;
+  background: #0d2137;
+  color: var(--gold);
+  border: 1px solid rgba(201, 168, 76, 0.38) !important;
+  font-size: 0.82rem;
+  letter-spacing: -0.01em;
+}
+.float-font:hover {
+  background: #163052;
+  box-shadow: 0 3px 12px rgba(201, 168, 76, 0.28) !important;
+}
+
+@media (max-width: 480px) {
+  .float-group { bottom: 16px; right: 12px; gap: 7px; }
+  .float-btn   { width: 42px; height: 42px; }
+  .float-font  { width: 34px; height: 34px; font-size: 0.76rem; }
 }

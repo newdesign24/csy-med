@@ -131,14 +131,14 @@
     }
     .clinic-en {
       font-size: 0.72rem;
-      color: #4e6882;
+      color: #8098b4;
       letter-spacing: 0.18em;
       text-transform: uppercase;
       margin-bottom: 16px;
     }
     .clinic-specialty {
       font-size: 0.9rem;
-      color: #8aa4c0;
+      color: #ccd6e4;
       letter-spacing: 0.06em;
       margin-bottom: 8px;
     }
@@ -155,7 +155,7 @@
     /* ── Message ────────────────────────────────────────── */
     .message {
       font-size: 0.95rem;
-      color: #8aa4c0;
+      color: #ccd6e4;
       line-height: 1.85;
       margin-bottom: 40px;
       word-break: keep-all;
@@ -207,7 +207,7 @@
     }
     .cd-label {
       font-size: 0.7rem;
-      color: #4e6882;
+      color: #8098b4;
       letter-spacing: 0.1em;
       text-transform: uppercase;
       font-weight: 500;
@@ -239,7 +239,7 @@
     /* ── Phone CTA ──────────────────────────────────────── */
     .cta-label {
       font-size: 0.75rem;
-      color: #4e6882;
+      color: #8098b4;
       letter-spacing: 0.09em;
       text-transform: uppercase;
       margin-bottom: 10px;
@@ -266,7 +266,7 @@
     .phone-btn:active { transform: translateY(0); }
     .phone-note {
       font-size: 0.8rem;
-      color: #4e6882;
+      color: #8098b4;
       line-height: 1.7;
     }
 
@@ -284,9 +284,9 @@
     }
     .cs-footer span {
       font-size: 0.75rem;
-      color: #2e4a63;
+      color: #8098b4;
     }
-    .cs-footer span.sep { color: #1e3348; }
+    .cs-footer span.sep { color: #4e6882; }
 
     /* ── Responsive ─────────────────────────────────────── */
     @media (max-width: 480px) {
@@ -300,6 +300,45 @@
       .cd-box { width: 54px; height: 54px; font-size: 1.3rem; }
       .countdown { gap: 4px; }
       .cd-sep { font-size: 1.3rem; }
+    }
+
+    /* ── Floating Action Buttons ────────────────────────── */
+    .float-group {
+      position: fixed;
+      bottom: 24px;
+      right: 18px;
+      z-index: 9000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .float-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 3px 16px rgba(0, 0, 0, 0.5);
+    }
+    .float-btn:hover { transform: scale(1.1); }
+    .float-phone { background: #c9a84c; color: #07111f; }
+    .float-kakao { background: #FEE500; color: #3C1E1E; }
+    .float-font-row { display: flex; gap: 5px; }
+    .float-font {
+      width: 38px;
+      height: 38px;
+      background: #0d2137;
+      color: #c9a84c;
+      border: 1px solid rgba(201, 168, 76, 0.38) !important;
+      font-size: 0.82rem;
+      font-weight: 700;
+      font-family: inherit;
     }
   </style>
 </head>
@@ -381,7 +420,49 @@
     </footer>
   </div>
 
+  <!-- Floating buttons -->
+  <div class="float-group">
+    <a href="tel:02-6393-5337" class="float-btn float-phone" title="전화 예약" aria-label="전화 예약">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.27-.27.67-.36
+          1.02-.24 1.12.37 2.32.57 3.58.57.55 0 1 .45 1 1V20c0 .55-.45
+          1-1 1C10.18 21 3 13.82 3 5c0-.55.45-1 1-1h3.5c.55 0 1 .45 1
+          1 0 1.27.2 2.47.57 3.58.11.35.02.74-.24 1.02L6.6 10.8z"/>
+      </svg>
+    </a>
+    <a href="#" class="float-btn float-kakao" title="카카오톡 채널" aria-label="카카오톡 채널">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 3C6.48 3 2 6.69 2 11.25c0 2.94 1.95 5.52 4.9 7.02
+          -.2.74-.74 2.7-.84 3.11-.13.5.18.49.38.36.15-.1 2.43-1.64
+          3.41-2.3.7.1 1.42.16 2.15.16 5.52 0 10-3.69 10-8.25
+          C22 6.69 17.52 3 12 3z"/>
+      </svg>
+    </a>
+    <div class="float-font-row">
+      <button class="float-btn float-font" id="csy-font-down" title="글자 작게" aria-label="글자 작게">A−</button>
+      <button class="float-btn float-font" id="csy-font-up"   title="글자 크게" aria-label="글자 크게">A+</button>
+    </div>
+  </div>
+
   <script>
+    // ── Font size restore (prevent FOUC) ──
+    (function () {
+      const SIZES = [16, 18, 20];
+      const i = Math.min(parseInt(localStorage.getItem('csy_fs') || '0'), SIZES.length - 1);
+      document.documentElement.style.fontSize = SIZES[i] + 'px';
+    })();
+
+    // ── Font size controls ──
+    const FS_SIZES = [16, 18, 20];
+    let fsSizeIdx = Math.min(parseInt(localStorage.getItem('csy_fs') || '0'), FS_SIZES.length - 1);
+    function applyFontSize(i) {
+      fsSizeIdx = Math.max(0, Math.min(i, FS_SIZES.length - 1));
+      document.documentElement.style.fontSize = FS_SIZES[fsSizeIdx] + 'px';
+      localStorage.setItem('csy_fs', fsSizeIdx);
+    }
+    document.getElementById('csy-font-down').addEventListener('click', () => applyFontSize(fsSizeIdx - 1));
+    document.getElementById('csy-font-up').addEventListener('click',   () => applyFontSize(fsSizeIdx + 1));
+
     // ── 오픈 예정일 설정 (YYYY, MM-1, DD, HH, mm, ss) ──
     const TARGET = new Date(2026, 8, 1, 9, 0, 0); // 2026-09-01 09:00
 
