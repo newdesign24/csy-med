@@ -973,7 +973,7 @@
   <div class="modal-backdrop" id="modal" role="presentation">
     <div class="modal" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
       <header class="modal-head">
-        <h2 id="modalTitle">설정</h2>
+        <h2 id="modalTitle">정보</h2>
         <button class="icon-btn" id="modalClose" aria-label="닫기">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"/>
@@ -982,32 +982,20 @@
         </button>
       </header>
       <div class="modal-body">
-        <div class="field">
-          <label class="field-label" for="apiKey">Claude API Key</label>
-          <div class="field-input-wrap">
-            <input
-              id="apiKey"
-              class="field-input"
-              type="password"
-              placeholder="sk-ant-api03-..."
-              autocomplete="off"
-              spellcheck="false"
-              autocapitalize="off"
-            />
-            <button class="reveal-btn" id="revealKey" type="button">표시</button>
-          </div>
-          <span class="field-hint" id="apiStatus">이 브라우저 로컬스토리지에만 저장됩니다. 서버로 전송되지 않습니다.</span>
-        </div>
-
         <div class="info-block">
           <p><b>모델</b><span>claude-sonnet-4-6</span></p>
           <p><b>음성 인식</b><span>Web Speech API · ko-KR</span></p>
+          <p><b>API 키</b><span>서버 환경변수로 안전하게 관리</span></p>
+          <p><b>전송 경로</b><span>브라우저 → /api/claude → Anthropic</span></p>
           <p><b>저장</b><span>대화 내용은 새로고침 시 사라집니다</span></p>
         </div>
+
+        <p style="margin-top:14px; font-size:0.78rem; color:var(--text-3); line-height:1.7; letter-spacing:-0.005em;">
+          이 페이지는 Claude API 키를 브라우저에 저장하지 않습니다. 모든 호출은 서버 측 프록시(<code style="font-family:'Menlo','Consolas',monospace; background:var(--surface-alt); padding:1px 5px; border-radius:4px;">/api/claude</code>)를 통해 안전하게 전달됩니다.
+        </p>
       </div>
       <footer class="modal-foot">
-        <button class="ghost-btn" id="clearKey" type="button">삭제</button>
-        <button class="primary-btn" id="saveKey" type="button">저장</button>
+        <button class="primary-btn" id="modalDone" type="button">확인</button>
       </footer>
     </div>
   </div>

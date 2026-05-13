@@ -2,10 +2,10 @@
    AI 진료 노트 — Clinical App
    ----------------------------------------------------------------
    - Web Speech API (한국어 ko-KR)로 실시간 음성 인식
-   - 의사/환자 발화자 수동 토글 (active 화자가 다음 발화에 적용)
+   - 의사/환자 발화자 수동 토글
    - 인식 결과는 메모리에서만 유지 (새로고침 시 초기화)
-   - Claude API (claude-sonnet-4-6)로 SOAP 노트 생성
-   - API 키는 localStorage('csy_anthropic_key')에 저장
+   - SOAP 노트 생성: 서버리스 프록시(/api/claude) 호출
+     (Claude API 키는 서버 측 ANTHROPIC_API_KEY 환경변수로만 관리)
    ============================================================ */
 
 (function () {
@@ -20,39 +20,37 @@
   const settingsBtn    = $('settingsBtn');
 
   // 모달
-  const modal         = $('modal');
-  const modalClose    = $('modalClose');
-  const apiKeyInput   = $('apiKey');
-  const revealKeyBtn  = $('revealKey');
-  const saveKeyBtn    = $('saveKey');
-  const clearKeyBtn   = $('clearKey');
-  const apiStatus     = $('apiStatus');
+  const modal       = $('modal');
+  const modalClose  = $('modalClose');
+  const modalDone   = $('modalDone');
 
   // 패널 좌 (대화)
-  const browserWarn   = $('browserWarn');
-  const speakerBtns   = document.querySelectorAll('.spk');
-  const transcriptEl  = $('transcript');
+  const browserWarn     = $('browserWarn');
+  const speakerBtns     = document.querySelectorAll('.spk');
+  const transcriptEl    = $('transcript');
   const transcriptEmpty = $('transcriptEmpty');
-  const msgCountEl    = $('msgCount');
-  const recBtn        = $('recBtn');
-  const recBtnLabel   = $('recBtnLabel');
-  const clearBtn      = $('clearBtn');
+  const msgCountEl      = $('msgCount');
+  const recBtn          = $('recBtn');
+  const recBtnLabel     = $('recBtnLabel');
+  const clearBtn        = $('clearBtn');
 
   // 패널 우 (SOAP)
-  const genBtn        = $('genBtn');
-  const genBtnLabel   = $('genBtnLabel');
-  const soapView      = $('soapView');
-  const soapEmpty     = $('soapEmpty');
-  const soapText      = $('soapText');
-  const copyBtn       = $('copyBtn');
+  const genBtn       = $('genBtn');
+  const genBtnLabel  = $('genBtnLabel');
+  const soapView     = $('soapView');
+  const soapEmpty    = $('soapEmpty');
+  const soapText     = $('soapText');
+  const copyBtn      = $('copyBtn');
 
   // 토스트
-  const toastEl       = $('toast');
+  const toastEl      = $('toast');
+
+  /* ── 설정 ──────────────────────────────────────────────── */
+  const PROXY_URL   = '/api/claude';
+  const MODEL       = 'claude-sonnet-4-6';
+  const MAX_TOKENS  = 2048;
 
   /* ── 상태 ──────────────────────────────────────────────── */
-  const STORAGE_KEY = 'csy_anthropic_key';
-  const MODEL       = 'claude-sonnet-4-6';
-
   /** @type {{id:number, speaker:'doctor'|'patient', text:string}[]} */
   const messages = [];
   let currentSpeaker = 'doctor';
@@ -60,6 +58,9 @@
   let isRecording    = false;
   let interimNode    = null;
   let nextId         = 1;
+
+  /* ── 이전 버전 호환: 로컬스토리지에 저장돼 있던 키 제거 ─ */
+  try { localStorage.removeItem('csy_anthropic_key'); } catch (_) {}
 
   /* ── Toast ─────────────────────────────────────────────── */
   let toastTimer = null;
@@ -75,11 +76,6 @@
     topStatusLabel.textContent = label;
     topStatus.classList.remove('live', 'success');
     if (kind) topStatus.classList.add(kind);
-  }
-  function setApiStatus(text, kind) {
-    apiStatus.textContent = text;
-    apiStatus.classList.remove('saved', 'error');
-    if (kind) apiStatus.classList.add(kind);
   }
 
   /* ── 메시지 카운트 + 버튼 가용성 ───────────────────────── */
@@ -161,7 +157,6 @@
     const m = { id: nextId++, speaker: currentSpeaker, text: t };
     messages.push(m);
     if (interimNode) { interimNode.remove(); interimNode = null; }
-    // 직전 발화가 같은 화자면 append, 다르면 새 노드 — 단순하게 새 노드로
     transcriptEmpty.style.display = 'none';
     transcriptEl.appendChild(buildMsgNode(m));
     transcriptEl.scrollTop = transcriptEl.scrollHeight;
@@ -169,77 +164,17 @@
   }
 
   /* ── 모달 ──────────────────────────────────────────────── */
-  function openModal() {
-    modal.classList.add('open');
-    // iOS Safari에서 zoom 방지: 키 입력 필드 포커스는 약간 지연
-    setTimeout(() => apiKeyInput.focus(), 50);
-  }
-  function closeModal() {
-    modal.classList.remove('open');
-    apiKeyInput.type = 'password';
-    revealKeyBtn.textContent = '표시';
-  }
+  function openModal()  { modal.classList.add('open'); }
+  function closeModal() { modal.classList.remove('open'); }
   settingsBtn.addEventListener('click', openModal);
   modalClose.addEventListener('click', closeModal);
+  modalDone.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeModal();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
   });
-
-  revealKeyBtn.addEventListener('click', () => {
-    if (apiKeyInput.type === 'password') {
-      apiKeyInput.type = 'text';
-      revealKeyBtn.textContent = '숨기기';
-    } else {
-      apiKeyInput.type = 'password';
-      revealKeyBtn.textContent = '표시';
-    }
-  });
-
-  /* ── API 키 저장/복원 ──────────────────────────────────── */
-  function loadKey() {
-    try {
-      const k = localStorage.getItem(STORAGE_KEY);
-      if (k) {
-        apiKeyInput.value = k;
-        setApiStatus('✓ 저장된 API 키를 불러왔습니다.', 'saved');
-        return k;
-      }
-    } catch (_) {}
-    setApiStatus('이 브라우저 로컬스토리지에만 저장됩니다. 서버로 전송되지 않습니다.');
-    return '';
-  }
-  function saveKey() {
-    const k = (apiKeyInput.value || '').trim();
-    if (!k) {
-      setApiStatus('API 키를 입력하세요.', 'error');
-      return;
-    }
-    if (!k.startsWith('sk-ant-')) {
-      setApiStatus('형식이 올바르지 않습니다. (sk-ant-... 로 시작해야 합니다)', 'error');
-      return;
-    }
-    try {
-      localStorage.setItem(STORAGE_KEY, k);
-      setApiStatus('✓ API 키가 저장되었습니다.', 'saved');
-      toast('API 키 저장됨');
-      setTimeout(closeModal, 600);
-    } catch (e) {
-      setApiStatus('저장 실패: ' + e.message, 'error');
-    }
-  }
-  function clearKey() {
-    try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
-    apiKeyInput.value = '';
-    setApiStatus('API 키를 삭제했습니다.');
-    toast('API 키 삭제됨');
-  }
-  saveKeyBtn.addEventListener('click', saveKey);
-  clearKeyBtn.addEventListener('click', clearKey);
-
-  const initialKey = loadKey();
 
   /* ── 발화자 토글 ───────────────────────────────────────── */
   speakerBtns.forEach((btn) => {
@@ -337,12 +272,13 @@
   });
 
   clearBtn.addEventListener('click', () => {
-    if (!messages.length && !soapText.textContent) return;
+    if (!messages.length && !(soapText.dataset.raw || soapText.textContent)) return;
     if (!confirm('대화 내용과 SOAP 노트를 모두 비웁니다. 진행할까요?')) return;
     messages.length = 0;
     clearRendered();
     soapText.textContent = '';
     soapText.classList.add('is-empty');
+    delete soapText.dataset.raw;
     soapEmpty.style.display = '';
     copyBtn.disabled = true;
     updateMsgCount();
@@ -354,7 +290,6 @@
     soapText.innerHTML = '';
     soapText.classList.remove('is-empty');
 
-    // [ S · Subjective ... ] / [ S · 주관적 ... ] / S - Subjective ... 등을 섹션으로 분리
     const lines = raw.split('\n');
     const sections = [];
     let current = null;
@@ -370,7 +305,6 @@
       } else if (current) {
         current.body.push(line);
       } else {
-        // 헤더 이전 텍스트 — preamble
         if (!sections.length || sections[sections.length - 1].letter !== '_pre') {
           sections.push({ letter: '_pre', title: '', body: [line] });
         } else {
@@ -380,7 +314,6 @@
     }
     if (current) sections.push(current);
 
-    // 섹션이 하나도 안 잡혔으면 그냥 통째로 출력
     const hasReal = sections.some((s) => s.letter !== '_pre');
     if (!hasReal) {
       soapText.textContent = raw.trim();
@@ -410,7 +343,7 @@
     });
   }
 
-  /* ── Claude API ────────────────────────────────────────── */
+  /* ── 프롬프트 ──────────────────────────────────────────── */
   function buildPrompt(msgs) {
     const dialog = msgs.map((m) =>
       `[${m.speaker === 'doctor' ? '의사' : '환자'}] ${m.text}`
@@ -454,18 +387,9 @@ ${dialog}
 위 형식만 출력하고 다른 설명은 덧붙이지 마세요.`;
   }
 
+  /* ── SOAP 생성 (서버리스 프록시 호출) ─────────────────── */
   async function generateSOAP() {
-    let apiKey = (apiKeyInput.value || '').trim();
-    if (!apiKey) {
-      try { apiKey = localStorage.getItem(STORAGE_KEY) || ''; } catch (_) {}
-    }
-    if (!apiKey) {
-      toast('먼저 설정에서 API 키를 입력하세요');
-      openModal();
-      return;
-    }
     if (!messages.length) return;
-
     if (isRecording) stopRecording();
 
     genBtn.classList.add('loading');
@@ -477,42 +401,37 @@ ${dialog}
     setTopStatus('생성 중…');
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch(PROXY_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: MODEL,
-          max_tokens: 2048,
+          max_tokens: MAX_TOKENS,
           messages: [{ role: 'user', content: buildPrompt(messages) }]
         })
       });
 
+      // 응답이 JSON인지 확인
+      const ct = res.headers.get('content-type') || '';
+      const data = ct.includes('application/json')
+        ? await res.json()
+        : { error: { message: '서버에서 JSON이 아닌 응답을 받았습니다. (' + res.status + ')' } };
+
       if (!res.ok) {
-        let detail = '';
-        try {
-          const j = await res.json();
-          detail = (j && j.error && j.error.message) ? j.error.message : '';
-        } catch (_) {}
-        throw new Error(`HTTP ${res.status}${detail ? ' — ' + detail : ''}`);
+        const msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+        throw new Error(msg);
       }
 
-      const data = await res.json();
       const text = (data.content || [])
         .filter((b) => b.type === 'text')
         .map((b) => b.text)
         .join('\n')
         .trim();
 
-      if (!text) throw new Error('빈 응답');
+      if (!text) throw new Error('빈 응답을 받았습니다.');
 
       soapEmpty.style.display = 'none';
       renderSoap(text);
-      // 데이터-텍스트(원본)는 복사용으로 저장
       soapText.dataset.raw = text;
       copyBtn.disabled = false;
       setTopStatus('생성 완료', 'success');
@@ -525,10 +444,11 @@ ${dialog}
       const errDiv = document.createElement('div');
       errDiv.style.color = 'var(--danger)';
       errDiv.style.lineHeight = '1.85';
-      errDiv.textContent = '⚠ SOAP 노트 생성 실패\n\n' + err.message +
-        '\n\n• API 키가 유효한지, 사용 한도가 남아 있는지 확인하세요.' +
-        '\n• 네트워크 또는 CORS 문제일 경우 브라우저 콘솔을 확인하세요.';
       errDiv.style.whiteSpace = 'pre-wrap';
+      errDiv.textContent =
+        '⚠ SOAP 노트 생성 실패\n\n' + err.message +
+        '\n\n• 서버에 ANTHROPIC_API_KEY가 설정돼 있는지 확인하세요.' +
+        '\n• Vercel 배포 도메인에서 접근 중인지 확인하세요. (GitHub Pages에서는 /api 경로가 동작하지 않습니다)';
       soapText.appendChild(errDiv);
       setTopStatus('오류');
       toast('생성 실패');
@@ -536,8 +456,7 @@ ${dialog}
       genBtn.classList.remove('loading');
       genBtn.disabled = messages.length === 0;
       genBtnLabel.textContent = '생성';
-      if (!isRecording && topStatus.classList.contains('live') === false) {
-        // 상태 메시지 유지 시간
+      if (!isRecording) {
         setTimeout(() => {
           if (!isRecording) setTopStatus('대기');
         }, 1800);
@@ -554,7 +473,6 @@ ${dialog}
       await navigator.clipboard.writeText(raw);
       toast('SOAP 노트가 복사되었습니다');
     } catch (e) {
-      // Fallback
       try {
         const ta = document.createElement('textarea');
         ta.value = raw;
