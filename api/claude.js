@@ -2,10 +2,14 @@
    Vercel Serverless Function — Claude API Proxy
    ----------------------------------------------------------------
    POST /api/claude
+     Headers: { x-soap-token }  ← /api/auth 에서 발급된 토큰 (필수)
      Body: { model, max_tokens?, messages, system? }
      - 서버에 저장된 ANTHROPIC_API_KEY 환경변수로 Claude API를 호출
-     - 브라우저에는 키가 절대 노출되지 않음
+     - SOAP_PASSWORD 기반 토큰 검증 통과한 요청만 허용
+     - 브라우저에는 API 키가 절대 노출되지 않음
    ============================================================ */
+
+const crypto = require('crypto');
 
 // 허용 모델 화이트리스트 (오용 방지)
 const ALLOWED_MODELS = new Set([
@@ -18,6 +22,19 @@ const ALLOWED_MODELS = new Set([
 const MAX_TOKENS_CAP   = 4096;   // 응답 토큰 상한
 const MAX_INPUT_CHARS  = 60000;  // 요청 전체 문자열 길이 상한
 const MAX_MESSAGES     = 50;
+
+// 인증 토큰 파생 (api/auth.js와 동일 로직)
+const TOKEN_SALT = 'csy-soap-v1';
+function deriveToken(password) {
+  return crypto.createHmac('sha256', password).update(TOKEN_SALT).digest('hex');
+}
+function constantTimeEq(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const ba = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
+}
 
 function readJsonBody(req) {
   // Vercel은 Content-Type: application/json 이면 req.body를 이미 파싱해줌
@@ -60,6 +77,16 @@ module.exports = async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return fail(res, 500, 'ANTHROPIC_API_KEY 환경변수가 서버에 설정되어 있지 않습니다.');
+  }
+
+  // 인증 토큰 검증 (SOAP_PASSWORD 기반)
+  const soapPwd = process.env.SOAP_PASSWORD;
+  if (!soapPwd) {
+    return fail(res, 500, 'SOAP_PASSWORD 환경변수가 서버에 설정되어 있지 않습니다.');
+  }
+  const submittedToken = req.headers['x-soap-token'];
+  if (!constantTimeEq(submittedToken, deriveToken(soapPwd))) {
+    return fail(res, 401, '인증되지 않은 요청입니다. 비밀번호로 다시 로그인하세요.');
   }
 
   // 바디 파싱

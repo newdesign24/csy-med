@@ -45,10 +45,20 @@
   // 토스트
   const toastEl      = $('toast');
 
+  // 잠금 화면
+  const lockScreen     = $('lockScreen');
+  const lockForm       = $('lockForm');
+  const lockInput      = $('lockInput');
+  const lockSubmit     = $('lockSubmit');
+  const lockSubmitText = $('lockSubmitText');
+  const lockError      = $('lockError');
+
   /* ── 설정 ──────────────────────────────────────────────── */
+  const AUTH_URL    = '/api/auth';
   const PROXY_URL   = '/api/claude';
   const MODEL       = 'claude-sonnet-4-6';
   const MAX_TOKENS  = 2048;
+  const TOKEN_KEY   = 'csy_soap_token';
 
   /* ── 상태 ──────────────────────────────────────────────── */
   /** @type {{id:number, speaker:'doctor'|'patient', text:string}[]} */
@@ -61,6 +71,93 @@
 
   /* ── 이전 버전 호환: 로컬스토리지에 저장돼 있던 키 제거 ─ */
   try { localStorage.removeItem('csy_anthropic_key'); } catch (_) {}
+
+  /* ── 인증 (비밀번호 잠금) ─────────────────────────────── */
+  function getToken() {
+    try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (_) { return ''; }
+  }
+  function setToken(t) {
+    try { localStorage.setItem(TOKEN_KEY, t); } catch (_) {}
+    document.documentElement.classList.add('authed');
+  }
+  function clearAuth() {
+    try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+    document.documentElement.classList.remove('authed');
+  }
+  function showLockError(msg) {
+    lockError.textContent = msg || '';
+  }
+  function showLockLoading(on) {
+    if (on) {
+      lockSubmit.classList.add('loading');
+      lockSubmitText.textContent = '확인 중…';
+      lockInput.disabled = true;
+      lockSubmit.disabled = true;
+    } else {
+      lockSubmit.classList.remove('loading');
+      lockSubmitText.textContent = '접속하기';
+      lockInput.disabled = false;
+      lockSubmit.disabled = false;
+    }
+  }
+  function lockOut(reason) {
+    clearAuth();
+    showLockError(reason || '');
+    setTimeout(() => {
+      try { lockInput.focus(); } catch (_) {}
+    }, 50);
+  }
+
+  lockInput.addEventListener('input', () => {
+    if (lockError.textContent) showLockError('');
+  });
+
+  lockForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = (lockInput.value || '').trim();
+    if (!password) {
+      showLockError('비밀번호를 입력하세요.');
+      lockInput.focus();
+      return;
+    }
+    showLockError('');
+    showLockLoading(true);
+    try {
+      const res = await fetch(AUTH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const ct = res.headers.get('content-type') || '';
+      const data = ct.includes('application/json') ? await res.json() : null;
+
+      if (!res.ok) {
+        const msg = (data && data.error && data.error.message)
+          ? data.error.message
+          : `오류 (HTTP ${res.status})`;
+        showLockError(msg);
+        lockInput.select();
+        return;
+      }
+      if (!data || !data.token) {
+        showLockError('서버 응답이 올바르지 않습니다.');
+        return;
+      }
+      setToken(data.token);
+      lockInput.value = '';
+      showLockError('');
+      toast('접속되었습니다');
+    } catch (err) {
+      showLockError('네트워크 오류: ' + (err && err.message ? err.message : err));
+    } finally {
+      showLockLoading(false);
+    }
+  });
+
+  // 페이지 진입 시 토큰 없으면 입력란 포커스
+  if (!getToken()) {
+    setTimeout(() => { try { lockInput.focus(); } catch (_) {} }, 100);
+  }
 
   /* ── Toast ─────────────────────────────────────────────── */
   let toastTimer = null;
@@ -401,15 +498,30 @@ ${dialog}
     setTopStatus('생성 중…');
 
     try {
+      const token = getToken();
+      if (!token) {
+        lockOut('인증이 필요합니다.');
+        throw new Error('인증되지 않은 상태입니다. 다시 로그인해 주세요.');
+      }
+
       const res = await fetch(PROXY_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-soap-token': token
+        },
         body: JSON.stringify({
           model: MODEL,
           max_tokens: MAX_TOKENS,
           messages: [{ role: 'user', content: buildPrompt(messages) }]
         })
       });
+
+      // 401이면 즉시 잠금 화면으로 복귀
+      if (res.status === 401) {
+        lockOut('세션이 만료되었습니다. 다시 로그인하세요.');
+        throw new Error('인증이 만료되었습니다. 비밀번호로 다시 로그인하세요.');
+      }
 
       // 응답이 JSON인지 확인
       const ct = res.headers.get('content-type') || '';
@@ -447,8 +559,9 @@ ${dialog}
       errDiv.style.whiteSpace = 'pre-wrap';
       errDiv.textContent =
         '⚠ SOAP 노트 생성 실패\n\n' + err.message +
-        '\n\n• 서버에 ANTHROPIC_API_KEY가 설정돼 있는지 확인하세요.' +
-        '\n• Vercel 배포 도메인에서 접근 중인지 확인하세요. (GitHub Pages에서는 /api 경로가 동작하지 않습니다)';
+        '\n\n• 서버에 ANTHROPIC_API_KEY와 SOAP_PASSWORD가 설정돼 있는지 확인하세요.' +
+        '\n• Vercel 배포 도메인에서 접근 중인지 확인하세요. (GitHub Pages에서는 /api 경로가 동작하지 않습니다)' +
+        '\n• 인증이 만료된 경우 잠금 화면에서 비밀번호를 다시 입력하세요.';
       soapText.appendChild(errDiv);
       setTopStatus('오류');
       toast('생성 실패');
