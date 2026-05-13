@@ -2,291 +2,561 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="STT + Claude AI 기반 진료 SOAP 노트 자동 생성 도구 — 상암동청심연한의원" />
-  <title>AI 진료 노트 (STT · SOAP) | 청심연한의원</title>
-  <link rel="stylesheet" href="../css/style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="description" content="진료 음성 인식 + SOAP 노트 자동 생성 — 클리닉 도구" />
+  <title>AI 진료 노트</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
   <style>
     /* ============================================================
-       SOAP Page — STT + Claude SOAP Note Generator
-       (style.css의 네이비/민트/골드 토큰을 그대로 사용)
+       Tokens — Clinical Light
        ============================================================ */
+    :root {
+      --bg:           #f1f5f9;
+      --surface:      #ffffff;
+      --surface-alt:  #f8fafc;
+      --surface-deep: #e2e8f0;
 
-    .soap-wrap { padding-bottom: 64px; }
+      --border:        #e2e8f0;
+      --border-strong: #cbd5e1;
+      --divider:       #f1f5f9;
 
-    /* ── Section Card ───────────────────────────────────────── */
-    .soap-card {
-      background: var(--bg-2);
-      border: 1px solid var(--border);
-      border-radius: var(--r-lg);
-      padding: 28px 32px;
-      margin-bottom: 24px;
-      transition: var(--t);
+      --text-1: #0f172a;
+      --text-2: #475569;
+      --text-3: #94a3b8;
+      --text-on: #ffffff;
+
+      --primary:        #0891b2;
+      --primary-hover:  #0e7490;
+      --primary-soft:   #ecfeff;
+      --primary-border: #a5f3fc;
+
+      --doctor:         #0369a1;
+      --doctor-soft:    #e0f2fe;
+      --doctor-border:  #bae6fd;
+
+      --patient:        #b45309;
+      --patient-soft:   #fef3c7;
+      --patient-border: #fde68a;
+
+      --danger:       #dc2626;
+      --danger-hover: #b91c1c;
+      --danger-soft:  #fef2f2;
+
+      --success:      #059669;
+      --success-soft: #d1fae5;
+
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-lg: 0 12px 36px rgba(15, 23, 42, 0.16);
+
+      --r-sm: 6px;
+      --r-md: 10px;
+      --r-lg: 14px;
+      --r-xl: 18px;
+
+      --topbar-h: 56px;
+      --t: 0.18s ease;
+
+      --font:
+        'Pretendard',
+        -apple-system, BlinkMacSystemFont, 'Segoe UI',
+        'Helvetica Neue', Arial, sans-serif;
     }
-    .soap-card-head {
+
+    /* ============================================================
+       Reset / Base
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text-1);
+      font-size: 15px;
+      line-height: 1.55;
+      letter-spacing: -0.005em;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      display: flex;
+      flex-direction: column;
+    }
+    button, input { font-family: var(--font); }
+    button {
+      border: none;
+      background: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 0;
+      font-size: inherit;
+      touch-action: manipulation;
+    }
+    input { outline: none; border: none; background: none; }
+    h1, h2, h3 { margin: 0; font-weight: 600; }
+    p { margin: 0; }
+
+    /* ============================================================
+       Topbar
+       ============================================================ */
+    .topbar {
+      flex-shrink: 0;
+      height: var(--topbar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
+      padding: 0 18px;
+      user-select: none;
+      z-index: 10;
     }
-    .soap-card-head h2 {
-      font-size: 1.05rem;
-      color: var(--mint);
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .soap-card-head h2::before {
-      content: '';
-      width: 4px;
-      height: 16px;
-      background: var(--mint);
-      border-radius: 2px;
-    }
-    .soap-card-head .head-aside {
-      font-size: 0.78rem;
-      color: var(--text-3);
-      letter-spacing: 0.02em;
-    }
-
-    /* ── API Key Panel ──────────────────────────────────────── */
-    .api-row {
-      display: grid;
-      grid-template-columns: 1fr auto auto;
-      gap: 10px;
-      align-items: center;
-    }
-    .api-input {
-      width: 100%;
-      padding: 12px 14px;
-      background: var(--bg-3);
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      color: var(--text-1);
-      font-size: 0.88rem;
-      font-family: 'Menlo', 'Consolas', monospace;
-      letter-spacing: 0.02em;
-      transition: var(--t);
-    }
-    .api-input:focus {
-      border-color: var(--mint-border);
-      background: var(--bg-4);
-      box-shadow: 0 0 0 3px var(--mint-dim);
-    }
-    .api-input::placeholder { color: var(--text-3); font-family: var(--sans); }
-    .api-status {
-      font-size: 0.78rem;
-      color: var(--text-3);
-      margin-top: 10px;
-      letter-spacing: 0.02em;
-    }
-    .api-status.saved  { color: var(--mint); }
-    .api-status.error  { color: #ff7b7b; }
-
-    /* ── Speaker Buttons (의사 / 환자) ────────────────────── */
-    .speaker-row {
+    .brand {
       display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
     }
-    .spk-btn {
-      flex: 1;
-      min-width: 130px;
-      padding: 14px 18px;
-      border-radius: var(--r-md);
-      background: var(--bg-3);
-      border: 1px solid var(--border);
-      color: var(--text-2);
-      font-size: 0.95rem;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      transition: var(--t);
+    .brand-back {
+      width: 36px;
+      height: 36px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      cursor: pointer;
+      border-radius: var(--r-sm);
+      color: var(--text-3);
+      transition: var(--t);
     }
-    .spk-btn:hover { background: var(--bg-4); color: var(--text-1); }
-    .spk-btn .spk-dot {
-      width: 8px;
-      height: 8px;
+    .brand-back:hover { background: var(--surface-alt); color: var(--text-1); }
+    .brand-title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+    }
+    .brand-title .name {
+      font-size: 0.85rem;
+      color: var(--text-3);
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .brand-title .dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--text-3);
+      opacity: 0.5;
+    }
+    .brand-title h1 {
+      font-size: 1rem;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
+      border-radius: 99px;
+      background: var(--surface-alt);
+      color: var(--text-2);
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+      border: 1px solid var(--border);
+    }
+    .status-pill .dot {
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: var(--text-3);
       transition: var(--t);
     }
-    .spk-btn.active {
-      color: var(--bg-0);
-      border-color: transparent;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+    .status-pill.live {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: #fecaca;
     }
-    .spk-btn.active .spk-dot { background: var(--bg-0); }
-    .spk-btn.doctor.active {
-      background: var(--mint);
+    .status-pill.live .dot {
+      background: var(--danger);
+      animation: pulse 1.1s ease-in-out infinite;
     }
-    .spk-btn.patient.active {
-      background: var(--gold);
+    .status-pill.success {
+      background: var(--success-soft);
+      color: var(--success);
+      border-color: #a7f3d0;
     }
-
-    /* ── Recording Controls ─────────────────────────────────── */
-    .rec-row {
-      display: flex;
-      flex-wrap: wrap;
+    .status-pill.success .dot { background: var(--success); }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(1.3); }
+    }
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      display: inline-flex;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
+      border-radius: var(--r-sm);
+      color: var(--text-2);
+      transition: var(--t);
     }
-    .rec-btn {
+    .icon-btn:hover { background: var(--surface-alt); color: var(--text-1); }
+    .icon-btn:active { transform: scale(0.94); }
+
+    /* ============================================================
+       Workspace (split panels)
+       ============================================================ */
+    .workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px;
+      min-height: 0;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .panel-head {
+      flex-shrink: 0;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 60px;
+    }
+    .panel-head h2 {
+      font-size: 0.95rem;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      padding: 13px 24px;
-      border-radius: var(--r-sm);
-      background: var(--mint);
-      color: var(--bg-0);
-      font-weight: 700;
-      font-size: 0.95rem;
-      letter-spacing: 0.02em;
-      transition: var(--t);
-      cursor: pointer;
-      border: none;
     }
-    .rec-btn:hover { background: var(--mint-hover); transform: translateY(-1px); }
-    .rec-btn.recording {
-      background: #e54a4a;
+    .panel-head h2 .badge-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 99px;
+      background: var(--surface-alt);
+      color: var(--text-2);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+    .panel-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* ============================================================
+       LEFT: Speaker Bar
+       ============================================================ */
+    .speaker-bar {
+      flex-shrink: 0;
+      padding: 14px 20px 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .spk {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 16px;
+      border-radius: var(--r-md);
+      background: var(--surface-alt);
+      color: var(--text-2);
+      font-size: 0.92rem;
+      font-weight: 600;
+      border: 1.5px solid transparent;
+      transition: var(--t);
+      user-select: none;
+    }
+    .spk .spk-ic {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-deep);
+      color: var(--text-3);
+      transition: var(--t);
+      flex-shrink: 0;
+    }
+    .spk .spk-ic svg { width: 14px; height: 14px; }
+    .spk:hover { background: #eef2f7; }
+    .spk:active { transform: scale(0.985); }
+
+    .spk.doctor.active {
+      background: var(--doctor-soft);
+      color: var(--doctor);
+      border-color: var(--doctor-border);
+    }
+    .spk.doctor.active .spk-ic {
+      background: var(--doctor);
       color: #fff;
     }
-    .rec-btn.recording:hover { background: #d83a3a; }
-    .rec-btn .rec-ic {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: currentColor;
+    .spk.patient.active {
+      background: var(--patient-soft);
+      color: var(--patient);
+      border-color: var(--patient-border);
     }
-    .rec-btn.recording .rec-ic {
-      animation: recPulse 1s ease-in-out infinite;
+    .spk.patient.active .spk-ic {
+      background: var(--patient);
+      color: #fff;
     }
-    @keyframes recPulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%       { opacity: 0.5; transform: scale(1.3); }
-    }
-    .rec-btn-ghost {
-      background: transparent;
-      color: var(--text-2);
-      border: 1px solid var(--border);
-    }
-    .rec-btn-ghost:hover {
-      background: var(--bg-3);
-      color: var(--text-1);
-      border-color: var(--text-3);
-    }
-    .rec-status {
-      font-size: 0.82rem;
-      color: var(--text-3);
-      margin-left: auto;
-      letter-spacing: 0.02em;
-    }
-    .rec-status.live { color: var(--mint); }
-    .rec-status.error { color: #ff7b7b; }
 
-    /* ── Transcript Area ────────────────────────────────────── */
+    /* ============================================================
+       LEFT: Transcript
+       ============================================================ */
     .transcript {
-      min-height: 260px;
-      max-height: 460px;
+      flex: 1;
       overflow-y: auto;
-      padding: 18px;
-      background: var(--bg-1);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
+      padding: 16px 20px;
       display: flex;
       flex-direction: column;
       gap: 10px;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
     }
-    .transcript:empty::before {
-      content: '🎙️  발화자를 선택하고 [녹음 시작]을 누르면 인식된 대화가 여기에 표시됩니다.';
-      color: var(--text-3);
-      font-size: 0.88rem;
-      align-self: center;
+    .transcript::-webkit-scrollbar { width: 8px; }
+    .transcript::-webkit-scrollbar-thumb {
+      background: var(--surface-deep);
+      border-radius: 99px;
+    }
+    .transcript::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+    .empty-state {
       margin: auto;
       text-align: center;
-      line-height: 1.85;
-      word-break: keep-all;
+      color: var(--text-3);
+      padding: 24px 20px;
     }
+    .empty-state .empty-ic {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      background: var(--surface-alt);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-3);
+    }
+    .empty-state .empty-ic svg { width: 22px; height: 22px; }
+    .empty-state p { font-size: 0.88rem; line-height: 1.75; word-break: keep-all; }
+    .empty-state .hint {
+      font-size: 0.78rem;
+      color: var(--text-3);
+      margin-top: 6px;
+      opacity: 0.8;
+    }
+
     .msg {
       display: flex;
       gap: 10px;
       align-items: flex-start;
+      animation: msgIn 0.18s ease;
+    }
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
     .msg .who {
       flex-shrink: 0;
-      width: 60px;
-      padding: 4px 8px;
-      border-radius: 6px;
+      min-width: 50px;
+      padding: 4px 9px;
+      border-radius: var(--r-sm);
       font-size: 0.72rem;
       font-weight: 700;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.02em;
       text-align: center;
-      line-height: 1.4;
+      line-height: 1.5;
+      margin-top: 2px;
     }
-    .msg.doctor .who  { background: var(--mint-dim); color: var(--mint); border: 1px solid var(--mint-border); }
-    .msg.patient .who { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold-border); }
-    .msg .text {
+    .msg.doctor .who  { background: var(--doctor-soft); color: var(--doctor); }
+    .msg.patient .who { background: var(--patient-soft); color: var(--patient); }
+    .msg .bubble {
       flex: 1;
-      font-size: 0.92rem;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      line-height: 1.65;
       color: var(--text-1);
-      line-height: 1.75;
-      padding-top: 2px;
-      word-break: keep-all;
+      word-break: break-word;
+      white-space: pre-wrap;
     }
-    .msg.interim .text { color: var(--text-3); font-style: italic; }
+    .msg.doctor .bubble {
+      background: var(--doctor-soft);
+      border-color: var(--doctor-border);
+      color: #082f49;
+    }
+    .msg.patient .bubble {
+      background: var(--patient-soft);
+      border-color: var(--patient-border);
+      color: #451a03;
+    }
+    .msg.interim .bubble {
+      background: repeating-linear-gradient(
+        135deg,
+        var(--surface-alt),
+        var(--surface-alt) 8px,
+        #fff 8px,
+        #fff 16px
+      );
+      color: var(--text-3);
+      font-style: italic;
+      border-style: dashed;
+    }
     .msg .del {
       flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--r-sm);
       color: var(--text-3);
-      font-size: 0.78rem;
-      padding: 4px 6px;
-      border-radius: 4px;
-      cursor: pointer;
+      transition: var(--t);
       opacity: 0;
-      transition: opacity 0.2s, background 0.2s;
+      margin-top: 4px;
     }
     .msg:hover .del { opacity: 1; }
-    .msg .del:hover { background: var(--bg-3); color: #ff7b7b; }
+    .msg .del:hover { background: var(--danger-soft); color: var(--danger); }
 
-    /* ── Generate Button ────────────────────────────────────── */
-    .gen-row {
+    /* ============================================================
+       LEFT: Record bar
+       ============================================================ */
+    .rec-bar {
+      flex-shrink: 0;
+      padding: 12px 20px 16px;
+      border-top: 1px solid var(--divider);
       display: flex;
       gap: 10px;
       align-items: center;
-      flex-wrap: wrap;
-      margin-top: 18px;
     }
-    .gen-btn {
+    .rec-btn {
+      flex: 1;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 10px;
-      padding: 14px 28px;
-      border-radius: var(--r-sm);
-      background: var(--gold);
-      color: var(--bg-0);
-      font-weight: 700;
+      padding: 14px 18px;
+      border-radius: var(--r-md);
+      background: var(--text-1);
+      color: var(--text-on);
       font-size: 0.95rem;
+      font-weight: 600;
       transition: var(--t);
-      cursor: pointer;
-      border: none;
+      box-shadow: var(--shadow-sm);
+      min-height: 50px;
     }
-    .gen-btn:hover:not(:disabled) {
-      background: var(--gold-light);
-      box-shadow: 0 4px 20px rgba(201, 168, 76, 0.35);
+    .rec-btn:hover { background: #1e293b; }
+    .rec-btn:active { transform: scale(0.985); }
+    .rec-btn .rec-ic {
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .rec-btn .rec-ic svg { width: 18px; height: 18px; }
+    .rec-btn.recording {
+      background: var(--danger);
+    }
+    .rec-btn.recording:hover { background: var(--danger-hover); }
+    .rec-btn.recording .rec-ic svg { display: none; }
+    .rec-btn.recording .rec-ic::before {
+      content: '';
+      width: 12px;
+      height: 12px;
+      background: #fff;
+      border-radius: 2px;
+      animation: recPulse 1.1s ease-in-out infinite;
+    }
+    @keyframes recPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.6; transform: scale(0.85); }
+    }
+    .rec-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .ghost-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 12px 16px;
+      border-radius: var(--r-md);
+      background: var(--surface);
+      color: var(--text-2);
+      font-size: 0.88rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      transition: var(--t);
+      min-height: 44px;
+    }
+    .ghost-btn:hover { background: var(--surface-alt); color: var(--text-1); border-color: var(--border-strong); }
+    .ghost-btn:active { transform: scale(0.985); }
+    .ghost-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ============================================================
+       RIGHT: SOAP view
+       ============================================================ */
+    .primary-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 10px 18px;
+      border-radius: var(--r-md);
+      background: var(--primary);
+      color: var(--text-on);
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: var(--t);
+      min-height: 40px;
+      box-shadow: var(--shadow-sm);
+    }
+    .primary-btn:hover:not(:disabled) {
+      background: var(--primary-hover);
       transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
     }
-    .gen-btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
+    .primary-btn:active { transform: scale(0.985); }
+    .primary-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+    .primary-btn svg { width: 16px; height: 16px; }
     .gen-spinner {
       width: 14px;
       height: 14px;
@@ -296,293 +566,455 @@
       animation: spin 0.7s linear infinite;
       display: none;
     }
-    .gen-btn.loading .gen-spinner { display: inline-block; }
-    .gen-btn.loading .gen-ic { display: none; }
+    .primary-btn.loading .gen-spinner { display: inline-block; }
+    .primary-btn.loading .gen-ic { display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .gen-hint {
-      font-size: 0.78rem;
-      color: var(--text-3);
-    }
 
-    /* ── SOAP Result ────────────────────────────────────────── */
-    .soap-result {
-      display: none;
-      background: var(--bg-1);
-      border: 1px solid var(--border-gold);
-      border-radius: var(--r-md);
+    .soap-view {
+      flex: 1;
+      overflow-y: auto;
       padding: 24px 28px;
-      margin-top: 18px;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
       position: relative;
     }
-    .soap-result.show { display: block; }
-    .soap-result pre {
-      white-space: pre-wrap;
-      word-break: keep-all;
-      font-family: var(--sans);
-      font-size: 0.92rem;
+    .soap-view::-webkit-scrollbar { width: 8px; }
+    .soap-view::-webkit-scrollbar-thumb {
+      background: var(--surface-deep);
+      border-radius: 99px;
+    }
+    .soap-pre {
+      margin: 0;
+      font-family: var(--font);
+      font-size: 0.95rem;
       line-height: 1.85;
       color: var(--text-1);
-      margin: 0;
+      white-space: pre-wrap;
+      word-break: keep-all;
+      letter-spacing: -0.005em;
     }
-    .soap-result .copy-btn {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      padding: 6px 12px;
-      border-radius: var(--r-sm);
-      background: var(--bg-3);
-      color: var(--text-2);
-      border: 1px solid var(--border);
+    .soap-pre.is-empty { display: none; }
+    .soap-section {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--divider);
+    }
+    .soap-section:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+    .soap-section h3 {
       font-size: 0.78rem;
-      cursor: pointer;
-      transition: var(--t);
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .soap-result .copy-btn:hover {
-      color: var(--mint);
-      border-color: var(--mint-border);
-      background: var(--mint-dim);
+    .soap-section h3::before {
+      content: '';
+      width: 3px;
+      height: 14px;
+      background: var(--primary);
+      border-radius: 2px;
     }
 
-    /* ── Browser warning ─────────────────────────────────────── */
-    .browser-warn {
+    /* ============================================================
+       Toast / Notice
+       ============================================================ */
+    .notice {
+      margin: 0 20px 14px;
+      padding: 12px 14px;
+      border-radius: var(--r-md);
+      background: var(--patient-soft);
+      border: 1px solid var(--patient-border);
+      color: #78350f;
+      font-size: 0.82rem;
+      line-height: 1.6;
       display: none;
-      padding: 14px 18px;
-      border-radius: var(--r-md);
-      border-left: 3px solid var(--gold);
-      background: var(--gold-dim);
-      font-size: 0.85rem;
-      color: var(--text-2);
-      line-height: 1.7;
-      margin-bottom: 20px;
     }
-    .browser-warn.show { display: block; }
-    .browser-warn strong { color: var(--gold); }
+    .notice.show { display: block; }
+    .notice strong { font-weight: 700; }
 
-    /* ── Disclaimer ─────────────────────────────────────────── */
-    .soap-disclaimer {
-      font-size: 0.78rem;
-      color: var(--text-3);
-      line-height: 1.75;
-      padding: 14px 18px;
-      border-radius: var(--r-md);
-      background: var(--bg-1);
-      border: 1px solid var(--border);
-      margin-top: 28px;
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--text-1);
+      color: var(--text-on);
+      font-size: 0.88rem;
+      font-weight: 500;
+      padding: 11px 20px;
+      border-radius: 99px;
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 9999;
     }
-    .soap-disclaimer strong { color: var(--text-2); }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
 
-    /* ── Toggle (API panel collapse) ────────────────────────── */
-    .toggle-link {
-      font-size: 0.8rem;
-      color: var(--text-3);
-      cursor: pointer;
-      letter-spacing: 0.02em;
-      user-select: none;
-      transition: var(--t);
+    /* ============================================================
+       Modal
+       ============================================================ */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
     }
-    .toggle-link:hover { color: var(--mint); }
-    .toggle-link::before {
-      content: '▾';
-      display: inline-block;
-      margin-right: 6px;
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal {
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border-radius: var(--r-xl);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      max-height: 85vh;
+      overflow: hidden;
+      transform: translateY(16px) scale(0.98);
       transition: transform 0.2s ease;
     }
-    .toggle-link.collapsed::before { transform: rotate(-90deg); }
-    .collapsible.collapsed { display: none; }
+    .modal-backdrop.open .modal { transform: translateY(0) scale(1); }
+    .modal-head {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-head h2 {
+      font-size: 1rem;
+      color: var(--text-1);
+    }
+    .modal-body { padding: 22px; overflow-y: auto; }
+    .modal-foot {
+      padding: 14px 22px;
+      border-top: 1px solid var(--divider);
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
 
-    /* ── Responsive ─────────────────────────────────────────── */
-    @media (max-width: 768px) {
-      .soap-card { padding: 22px 20px; }
-      .api-row { grid-template-columns: 1fr; }
-      .rec-status { margin-left: 0; flex-basis: 100%; }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .field-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-2);
+    }
+    .field-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .field-input {
+      width: 100%;
+      padding: 12px 64px 12px 14px;
+      background: var(--surface-alt);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-md);
+      color: var(--text-1);
+      font-size: 16px;
+      font-family: 'Menlo', 'Consolas', monospace;
+      letter-spacing: 0.01em;
+      transition: var(--t);
+    }
+    .field-input:focus {
+      border-color: var(--primary);
+      background: var(--surface);
+      box-shadow: 0 0 0 3px var(--primary-soft);
+    }
+    .field-input::placeholder {
+      color: var(--text-3);
+      font-family: var(--font);
+    }
+    .reveal-btn {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 6px 10px;
+      border-radius: var(--r-sm);
+      background: transparent;
+      color: var(--text-3);
+      font-size: 0.78rem;
+      font-weight: 500;
+      transition: var(--t);
+    }
+    .reveal-btn:hover { background: var(--surface-deep); color: var(--text-1); }
+    .field-hint {
+      font-size: 0.78rem;
+      color: var(--text-3);
+      line-height: 1.55;
+    }
+    .field-hint.saved { color: var(--success); }
+    .field-hint.error { color: var(--danger); }
+
+    .info-block {
+      padding: 14px 16px;
+      border-radius: var(--r-md);
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      font-size: 0.82rem;
+      color: var(--text-2);
+      line-height: 1.85;
+      letter-spacing: -0.005em;
+    }
+    .info-block p { display: flex; gap: 8px; }
+    .info-block p b { color: var(--text-1); min-width: 80px; font-weight: 600; }
+
+    /* ============================================================
+       Responsive — iPad portrait / mobile
+       ============================================================ */
+    @media (max-width: 900px) {
+      .workspace {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+      }
+      .brand-title .name { display: none; }
+      .brand-title .dot { display: none; }
+    }
+    @media (max-width: 560px) {
+      .workspace { gap: 10px; padding: 10px; }
+      .panel-head { padding: 14px 16px; min-height: 56px; }
+      .speaker-bar { padding: 12px 16px 0; }
+      .transcript { padding: 14px 16px; }
+      .rec-bar { padding: 12px 16px 14px; }
+      .soap-view { padding: 18px 20px; }
+      .ghost-btn .ghost-text-hide { display: none; }
+    }
+
+    /* iOS safe area */
+    @supports (padding: max(0px)) {
+      .topbar { padding-left: max(18px, env(safe-area-inset-left)); padding-right: max(18px, env(safe-area-inset-right)); }
+      .workspace { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); padding-bottom: max(14px, env(safe-area-inset-bottom)); }
     }
   </style>
 </head>
 <body>
 
-  <!-- ======================================================
-       HEADER
-  ======================================================= -->
-  <header id="header">
-    <nav class="nav-inner">
-      <a href="../index.html" class="nav-logo">
-        <span class="logo-ko">청심연한의원</span>
-        <span class="logo-sub">상암동 · 근골격계 전문</span>
+  <!-- ============================================================
+       TOPBAR
+  ============================================================ -->
+  <header class="topbar">
+    <div class="brand">
+      <a href="../index.html" class="brand-back" aria-label="홈으로" title="홈으로">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
       </a>
-      <div class="nav-links">
-        <a href="../index.html">홈</a>
-        <a href="../about.html">원장 소개</a>
-        <a href="../treatment.html">진료 프로그램</a>
-        <a href="../location.html">오시는 길</a>
-        <a href="../contact.html">예약·문의</a>
+      <div class="brand-title">
+        <span class="name">청심연한의원</span>
+        <span class="dot"></span>
+        <h1>AI 진료 노트</h1>
       </div>
-      <a href="../contact.html" class="btn btn-gold btn-sm nav-cta">예약하기</a>
-      <button class="nav-hamburger" aria-label="메뉴 열기">
-        <span></span><span></span><span></span>
+    </div>
+    <div class="top-actions">
+      <span class="status-pill" id="topStatus" aria-live="polite">
+        <span class="dot"></span>
+        <span class="status-label">대기</span>
+      </span>
+      <button class="icon-btn" id="settingsBtn" aria-label="설정" title="설정">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
       </button>
-    </nav>
+    </div>
   </header>
 
-  <!-- Mobile Drawer -->
-  <nav class="nav-drawer">
-    <a href="../index.html">🏠&nbsp; 홈</a>
-    <a href="../about.html">👨‍⚕️&nbsp; 원장 소개</a>
-    <a href="../treatment.html">💊&nbsp; 진료 프로그램</a>
-    <a href="../location.html">📍&nbsp; 오시는 길</a>
-    <a href="../contact.html" class="drawer-cta">📅&nbsp; 예약·문의</a>
-  </nav>
+  <!-- ============================================================
+       WORKSPACE — Split panels
+  ============================================================ -->
+  <main class="workspace">
 
-  <!-- ======================================================
-       PAGE HERO
-  ======================================================= -->
-  <section class="page-hero">
-    <div class="container">
-      <div class="breadcrumb">
-        <a href="../index.html">홈</a>
-        <span>›</span>
-        <span>AI 진료 노트</span>
-      </div>
-      <div class="badge badge-green" style="margin-bottom:16px;">BETA · 원내 시범 운용</div>
-      <h1>AI 진료 노트 <span style="color:var(--gold);">STT · SOAP</span></h1>
-      <p>
-        진료 대화를 음성 인식하여, Claude AI가 자동으로 SOAP 노트를 생성합니다.<br>
-        의사·환자 발화를 구분해 더 정확한 기록으로 정리됩니다.
-      </p>
-    </div>
-  </section>
-
-  <!-- ======================================================
-       SOAP TOOL
-  ======================================================= -->
-  <section class="section soap-wrap">
-    <div class="container" style="max-width: 880px;">
-
-      <!-- Browser warning -->
-      <div class="browser-warn" id="browserWarn">
-        <strong>⚠️ 브라우저 지원 알림</strong><br>
-        이 페이지의 음성 인식 기능은 <strong>Chrome / Edge</strong> 데스크톱 브라우저에서 가장 안정적으로 동작합니다.
-        Safari·Firefox에서는 음성 인식이 제한될 수 있습니다.
+    <!-- LEFT: Conversation -->
+    <section class="panel" aria-label="대화 패널">
+      <div class="panel-head">
+        <h2>
+          <span>대화</span>
+          <span class="badge-count" id="msgCount">0</span>
+        </h2>
       </div>
 
-      <!-- 01. API Key -->
-      <div class="soap-card">
-        <div class="soap-card-head">
-          <h2>01 · Claude API Key</h2>
-          <span class="toggle-link" id="apiToggle">설정 펼치기</span>
-        </div>
-        <div class="collapsible" id="apiPanel">
-          <div class="api-row">
-            <input type="password" id="apiKey" class="api-input" placeholder="sk-ant-... (Anthropic Console에서 발급)" autocomplete="off" spellcheck="false">
-            <button class="btn btn-mint" id="saveKey" type="button" style="padding:12px 18px; font-size:0.85rem;">저장</button>
-            <button class="btn btn-ghost" id="clearKey" type="button" style="padding:12px 18px; font-size:0.85rem;">삭제</button>
+      <div class="notice" id="browserWarn">
+        <strong>⚠️ 브라우저 알림 ·</strong>
+        음성 인식은 데스크톱/iPadOS의 <strong>Chrome / Safari</strong>에서 가장 안정적으로 동작합니다.
+      </div>
+
+      <div class="speaker-bar" role="group" aria-label="발화자 선택">
+        <button class="spk doctor active" data-speaker="doctor" type="button">
+          <span class="spk-ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+              <path d="M6 21v-1a6 6 0 0 1 12 0v1"/>
+            </svg>
+          </span>
+          <span>의사</span>
+        </button>
+        <button class="spk patient" data-speaker="patient" type="button">
+          <span class="spk-ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+              <path d="M6 21v-1a6 6 0 0 1 12 0v1"/>
+            </svg>
+          </span>
+          <span>환자</span>
+        </button>
+      </div>
+
+      <div class="transcript" id="transcript" aria-live="polite">
+        <div class="empty-state" id="transcriptEmpty">
+          <div class="empty-ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
           </div>
-          <p class="api-status" id="apiStatus">API 키는 브라우저 로컬스토리지에만 저장되며 서버로 전송되지 않습니다.</p>
+          <p>발화자를 선택하고 <b>녹음 시작</b>을 누르면<br>인식된 대화가 여기에 표시됩니다.</p>
+          <p class="hint">필요할 때 발화자 버튼을 눌러 의사·환자를 전환하세요.</p>
         </div>
       </div>
 
-      <!-- 02. 음성 인식 + 발화자 -->
-      <div class="soap-card">
-        <div class="soap-card-head">
-          <h2>02 · 음성 인식 · 발화자 구분</h2>
-          <span class="head-aside">한국어 (ko-KR)</span>
-        </div>
-
-        <p style="font-size:0.82rem; color:var(--text-3); margin-bottom:12px; letter-spacing:0.02em;">
-          ① 현재 말하는 사람을 선택하세요 → ② [녹음 시작]을 누르면 실시간으로 인식됩니다.
-        </p>
-
-        <!-- 발화자 -->
-        <div class="speaker-row" role="group" aria-label="발화자 선택">
-          <button class="spk-btn doctor active" data-speaker="doctor" type="button">
-            <span class="spk-dot"></span>
-            <span>의사 (Doctor)</span>
-          </button>
-          <button class="spk-btn patient" data-speaker="patient" type="button">
-            <span class="spk-dot"></span>
-            <span>환자 (Patient)</span>
-          </button>
-        </div>
-
-        <!-- 녹음 컨트롤 -->
-        <div class="rec-row">
-          <button class="rec-btn" id="recBtn" type="button">
-            <span class="rec-ic"></span>
-            <span id="recBtnLabel">녹음 시작</span>
-          </button>
-          <button class="rec-btn rec-btn-ghost" id="clearBtn" type="button">대화 비우기</button>
-          <span class="rec-status" id="recStatus">대기 중</span>
-        </div>
+      <div class="rec-bar">
+        <button class="rec-btn" id="recBtn" type="button">
+          <span class="rec-ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </span>
+          <span id="recBtnLabel">녹음 시작</span>
+        </button>
+        <button class="ghost-btn" id="clearBtn" type="button" aria-label="대화 비우기" title="대화 비우기">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+          </svg>
+          <span class="ghost-text-hide">비우기</span>
+        </button>
       </div>
+    </section>
 
-      <!-- 03. 대화 내용 -->
-      <div class="soap-card">
-        <div class="soap-card-head">
-          <h2>03 · 대화 내용</h2>
-          <span class="head-aside" id="msgCount">0 개</span>
-        </div>
-        <div class="transcript" id="transcript" aria-live="polite"></div>
-
-        <div class="gen-row">
-          <button class="gen-btn" id="genBtn" type="button" disabled>
-            <span class="gen-ic">✨</span>
+    <!-- RIGHT: SOAP Note -->
+    <section class="panel" aria-label="SOAP 노트 패널">
+      <div class="panel-head">
+        <h2>SOAP 노트</h2>
+        <div class="panel-actions">
+          <button class="ghost-btn" id="copyBtn" type="button" disabled aria-label="복사">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span>복사</span>
+          </button>
+          <button class="primary-btn" id="genBtn" type="button" disabled>
+            <span class="gen-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z"/>
+              </svg>
+            </span>
             <span class="gen-spinner"></span>
-            <span id="genBtnLabel">SOAP 노트 생성</span>
+            <span id="genBtnLabel">생성</span>
           </button>
-          <span class="gen-hint" id="genHint">대화가 1건 이상 있어야 생성할 수 있습니다.</span>
-        </div>
-
-        <!-- SOAP 결과 -->
-        <div class="soap-result" id="soapResult">
-          <button class="copy-btn" id="copyBtn" type="button">📋 복사</button>
-          <pre id="soapText"></pre>
         </div>
       </div>
 
-      <!-- Disclaimer -->
-      <p class="soap-disclaimer">
-        <strong>안내</strong> · 본 도구는 의료진의 기록 보조용이며, 최종 진료 기록은 반드시 담당의가 검토·확정해야 합니다.
-        음성 인식 결과 및 AI 생성 내용은 정확하지 않을 수 있습니다. 환자 정보는 외부로 전송되지 않도록 익명화하여 사용하세요.
-      </p>
+      <div class="soap-view" id="soapView">
+        <div class="empty-state" id="soapEmpty">
+          <div class="empty-ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="9" y1="13" x2="15" y2="13"/>
+              <line x1="9" y1="17" x2="13" y2="17"/>
+            </svg>
+          </div>
+          <p>왼쪽에서 대화를 녹음하고<br><b>생성</b> 버튼을 누르면<br>SOAP 노트가 여기에 표시됩니다.</p>
+        </div>
+        <div class="soap-pre is-empty" id="soapText"></div>
+      </div>
+    </section>
 
+  </main>
+
+  <!-- ============================================================
+       SETTINGS MODAL
+  ============================================================ -->
+  <div class="modal-backdrop" id="modal" role="presentation">
+    <div class="modal" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
+      <header class="modal-head">
+        <h2 id="modalTitle">설정</h2>
+        <button class="icon-btn" id="modalClose" aria-label="닫기">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </header>
+      <div class="modal-body">
+        <div class="field">
+          <label class="field-label" for="apiKey">Claude API Key</label>
+          <div class="field-input-wrap">
+            <input
+              id="apiKey"
+              class="field-input"
+              type="password"
+              placeholder="sk-ant-api03-..."
+              autocomplete="off"
+              spellcheck="false"
+              autocapitalize="off"
+            />
+            <button class="reveal-btn" id="revealKey" type="button">표시</button>
+          </div>
+          <span class="field-hint" id="apiStatus">이 브라우저 로컬스토리지에만 저장됩니다. 서버로 전송되지 않습니다.</span>
+        </div>
+
+        <div class="info-block">
+          <p><b>모델</b><span>claude-sonnet-4-6</span></p>
+          <p><b>음성 인식</b><span>Web Speech API · ko-KR</span></p>
+          <p><b>저장</b><span>대화 내용은 새로고침 시 사라집니다</span></p>
+        </div>
+      </div>
+      <footer class="modal-foot">
+        <button class="ghost-btn" id="clearKey" type="button">삭제</button>
+        <button class="primary-btn" id="saveKey" type="button">저장</button>
+      </footer>
     </div>
-  </section>
+  </div>
 
-  <!-- ======================================================
-       FOOTER
-  ======================================================= -->
-  <footer id="footer">
-    <div class="container">
-      <div class="footer-top">
-        <div class="footer-brand">
-          <div class="logo-ko">청심연한의원</div>
-          <div class="logo-sub">CHEONGSHIMYEON KOREAN MEDICINE</div>
-          <p>서울 마포구 상암동에 위치한 근골격계 전문 한의원입니다.<br>몸의 균형을 회복하고 건강한 일상으로 돌아오세요.</p>
-        </div>
-        <div class="footer-col">
-          <h4>진료</h4>
-          <ul>
-            <li><a href="../treatment.html">손목 / 등 / 목</a></li>
-            <li><a href="../treatment.html">승모근 / 목디스크</a></li>
-            <li><a href="../treatment.html">발목 / 수술후유착</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>바로가기</h4>
-          <ul>
-            <li><a href="../about.html">원장 소개</a></li>
-            <li><a href="../location.html">오시는 길</a></li>
-            <li><a href="../contact.html">예약·문의</a></li>
-          </ul>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <p>서울시 마포구 월드컵북로 402 케이이티빌딩 216호·217호 | 대표전화: 02-6393-5337</p>
-        <p>© 2016 상암동청심연한의원. All rights reserved.</p>
-      </div>
-    </div>
-  </footer>
+  <!-- Toast -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="../js/main.js"></script>
   <script src="soap.js"></script>
 </body>
 </html>
