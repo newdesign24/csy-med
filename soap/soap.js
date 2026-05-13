@@ -18,6 +18,7 @@
   const topStatus      = $('topStatus');
   const topStatusLabel = topStatus.querySelector('.status-label');
   const settingsBtn    = $('settingsBtn');
+  const logoutBtn      = $('logoutBtn');
 
   // 모달
   const modal       = $('modal');
@@ -264,6 +265,18 @@
   function openModal()  { modal.classList.add('open'); }
   function closeModal() { modal.classList.remove('open'); }
   settingsBtn.addEventListener('click', openModal);
+
+  // 로그아웃: 토큰 삭제 후 잠금 화면으로 복귀
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      if (!confirm('로그아웃 하시겠습니까?')) return;
+      if (isRecording) stopRecording(true);
+      lockOut('');
+      // 다음 진입을 위해 입력 필드 초기화
+      try { lockInput.value = ''; } catch (_) {}
+      toast('로그아웃 되었습니다');
+    });
+  }
   modalClose.addEventListener('click', closeModal);
   modalDone.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => {
