@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="STT + Claude AI 기반 진료 SOAP 노트 자동 생성 도구 — 상암동청심연한의원" />
+  <title>AI 진료 노트 (STT · SOAP) | 청심연한의원</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    /* ============================================================
+       SOAP Page — STT + Claude SOAP Note Generator
+       (style.css의 네이비/민트/골드 토큰을 그대로 사용)
+       ============================================================ */
+
+    .soap-wrap { padding-bottom: 64px; }
+
+    /* ── Section Card ───────────────────────────────────────── */
+    .soap-card {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      transition: var(--t);
+    }
+    .soap-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .soap-card-head h2 {
+      font-size: 1.05rem;
+      color: var(--mint);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .soap-card-head h2::before {
+      content: '';
+      width: 4px;
+      height: 16px;
+      background: var(--mint);
+      border-radius: 2px;
+    }
+    .soap-card-head .head-aside {
+      font-size: 0.78rem;
+      color: var(--text-3);
+      letter-spacing: 0.02em;
+    }
+
+    /* ── API Key Panel ──────────────────────────────────────── */
+    .api-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .api-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text-1);
+      font-size: 0.88rem;
+      font-family: 'Menlo', 'Consolas', monospace;
+      letter-spacing: 0.02em;
+      transition: var(--t);
+    }
+    .api-input:focus {
+      border-color: var(--mint-border);
+      background: var(--bg-4);
+      box-shadow: 0 0 0 3px var(--mint-dim);
+    }
+    .api-input::placeholder { color: var(--text-3); font-family: var(--sans); }
+    .api-status {
+      font-size: 0.78rem;
+      color: var(--text-3);
+      margin-top: 10px;
+      letter-spacing: 0.02em;
+    }
+    .api-status.saved  { color: var(--mint); }
+    .api-status.error  { color: #ff7b7b; }
+
+    /* ── Speaker Buttons (의사 / 환자) ────────────────────── */
+    .speaker-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .spk-btn {
+      flex: 1;
+      min-width: 130px;
+      padding: 14px 18px;
+      border-radius: var(--r-md);
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      transition: var(--t);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .spk-btn:hover { background: var(--bg-4); color: var(--text-1); }
+    .spk-btn .spk-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-3);
+      transition: var(--t);
+    }
+    .spk-btn.active {
+      color: var(--bg-0);
+      border-color: transparent;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+    }
+    .spk-btn.active .spk-dot { background: var(--bg-0); }
+    .spk-btn.doctor.active {
+      background: var(--mint);
+    }
+    .spk-btn.patient.active {
+      background: var(--gold);
+    }
+
+    /* ── Recording Controls ─────────────────────────────────── */
+    .rec-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .rec-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 24px;
+      border-radius: var(--r-sm);
+      background: var(--mint);
+      color: var(--bg-0);
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+      transition: var(--t);
+      cursor: pointer;
+      border: none;
+    }
+    .rec-btn:hover { background: var(--mint-hover); transform: translateY(-1px); }
+    .rec-btn.recording {
+      background: #e54a4a;
+      color: #fff;
+    }
+    .rec-btn.recording:hover { background: #d83a3a; }
+    .rec-btn .rec-ic {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .rec-btn.recording .rec-ic {
+      animation: recPulse 1s ease-in-out infinite;
+    }
+    @keyframes recPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(1.3); }
+    }
+    .rec-btn-ghost {
+      background: transparent;
+      color: var(--text-2);
+      border: 1px solid var(--border);
+    }
+    .rec-btn-ghost:hover {
+      background: var(--bg-3);
+      color: var(--text-1);
+      border-color: var(--text-3);
+    }
+    .rec-status {
+      font-size: 0.82rem;
+      color: var(--text-3);
+      margin-left: auto;
+      letter-spacing: 0.02em;
+    }
+    .rec-status.live { color: var(--mint); }
+    .rec-status.error { color: #ff7b7b; }
+
+    /* ── Transcript Area ────────────────────────────────────── */
+    .transcript {
+      min-height: 260px;
+      max-height: 460px;
+      overflow-y: auto;
+      padding: 18px;
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .transcript:empty::before {
+      content: '🎙️  발화자를 선택하고 [녹음 시작]을 누르면 인식된 대화가 여기에 표시됩니다.';
+      color: var(--text-3);
+      font-size: 0.88rem;
+      align-self: center;
+      margin: auto;
+      text-align: center;
+      line-height: 1.85;
+      word-break: keep-all;
+    }
+    .msg {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .msg .who {
+      flex-shrink: 0;
+      width: 60px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .msg.doctor .who  { background: var(--mint-dim); color: var(--mint); border: 1px solid var(--mint-border); }
+    .msg.patient .who { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold-border); }
+    .msg .text {
+      flex: 1;
+      font-size: 0.92rem;
+      color: var(--text-1);
+      line-height: 1.75;
+      padding-top: 2px;
+      word-break: keep-all;
+    }
+    .msg.interim .text { color: var(--text-3); font-style: italic; }
+    .msg .del {
+      flex-shrink: 0;
+      color: var(--text-3);
+      font-size: 0.78rem;
+      padding: 4px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s, background 0.2s;
+    }
+    .msg:hover .del { opacity: 1; }
+    .msg .del:hover { background: var(--bg-3); color: #ff7b7b; }
+
+    /* ── Generate Button ────────────────────────────────────── */
+    .gen-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+    .gen-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      border-radius: var(--r-sm);
+      background: var(--gold);
+      color: var(--bg-0);
+      font-weight: 700;
+      font-size: 0.95rem;
+      transition: var(--t);
+      cursor: pointer;
+      border: none;
+    }
+    .gen-btn:hover:not(:disabled) {
+      background: var(--gold-light);
+      box-shadow: 0 4px 20px rgba(201, 168, 76, 0.35);
+      transform: translateY(-1px);
+    }
+    .gen-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .gen-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .gen-btn.loading .gen-spinner { display: inline-block; }
+    .gen-btn.loading .gen-ic { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .gen-hint {
+      font-size: 0.78rem;
+      color: var(--text-3);
+    }
+
+    /* ── SOAP Result ────────────────────────────────────────── */
+    .soap-result {
+      display: none;
+      background: var(--bg-1);
+      border: 1px solid var(--border-gold);
+      border-radius: var(--r-md);
+      padding: 24px 28px;
+      margin-top: 18px;
+      position: relative;
+    }
+    .soap-result.show { display: block; }
+    .soap-result pre {
+      white-space: pre-wrap;
+      word-break: keep-all;
+      font-family: var(--sans);
+      font-size: 0.92rem;
+      line-height: 1.85;
+      color: var(--text-1);
+      margin: 0;
+    }
+    .soap-result .copy-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      padding: 6px 12px;
+      border-radius: var(--r-sm);
+      background: var(--bg-3);
+      color: var(--text-2);
+      border: 1px solid var(--border);
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: var(--t);
+    }
+    .soap-result .copy-btn:hover {
+      color: var(--mint);
+      border-color: var(--mint-border);
+      background: var(--mint-dim);
+    }
+
+    /* ── Browser warning ─────────────────────────────────────── */
+    .browser-warn {
+      display: none;
+      padding: 14px 18px;
+      border-radius: var(--r-md);
+      border-left: 3px solid var(--gold);
+      background: var(--gold-dim);
+      font-size: 0.85rem;
+      color: var(--text-2);
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+    .browser-warn.show { display: block; }
+    .browser-warn strong { color: var(--gold); }
+
+    /* ── Disclaimer ─────────────────────────────────────────── */
+    .soap-disclaimer {
+      font-size: 0.78rem;
+      color: var(--text-3);
+      line-height: 1.75;
+      padding: 14px 18px;
+      border-radius: var(--r-md);
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      margin-top: 28px;
+    }
+    .soap-disclaimer strong { color: var(--text-2); }
+
+    /* ── Toggle (API panel collapse) ────────────────────────── */
+    .toggle-link {
+      font-size: 0.8rem;
+      color: var(--text-3);
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      user-select: none;
+      transition: var(--t);
+    }
+    .toggle-link:hover { color: var(--mint); }
+    .toggle-link::before {
+      content: '▾';
+      display: inline-block;
+      margin-right: 6px;
+      transition: transform 0.2s ease;
+    }
+    .toggle-link.collapsed::before { transform: rotate(-90deg); }
+    .collapsible.collapsed { display: none; }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .soap-card { padding: 22px 20px; }
+      .api-row { grid-template-columns: 1fr; }
+      .rec-status { margin-left: 0; flex-basis: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ======================================================
+       HEADER
+  ======================================================= -->
+  <header id="header">
+    <nav class="nav-inner">
+      <a href="../index.html" class="nav-logo">
+        <span class="logo-ko">청심연한의원</span>
+        <span class="logo-sub">상암동 · 근골격계 전문</span>
+      </a>
+      <div class="nav-links">
+        <a href="../index.html">홈</a>
+        <a href="../about.html">원장 소개</a>
+        <a href="../treatment.html">진료 프로그램</a>
+        <a href="../location.html">오시는 길</a>
+        <a href="../contact.html">예약·문의</a>
+      </div>
+      <a href="../contact.html" class="btn btn-gold btn-sm nav-cta">예약하기</a>
+      <button class="nav-hamburger" aria-label="메뉴 열기">
+        <span></span><span></span><span></span>
+      </button>
+    </nav>
+  </header>
+
+  <!-- Mobile Drawer -->
+  <nav class="nav-drawer">
+    <a href="../index.html">🏠&nbsp; 홈</a>
+    <a href="../about.html">👨‍⚕️&nbsp; 원장 소개</a>
+    <a href="../treatment.html">💊&nbsp; 진료 프로그램</a>
+    <a href="../location.html">📍&nbsp; 오시는 길</a>
+    <a href="../contact.html" class="drawer-cta">📅&nbsp; 예약·문의</a>
+  </nav>
+
+  <!-- ======================================================
+       PAGE HERO
+  ======================================================= -->
+  <section class="page-hero">
+    <div class="container">
+      <div class="breadcrumb">
+        <a href="../index.html">홈</a>
+        <span>›</span>
+        <span>AI 진료 노트</span>
+      </div>
+      <div class="badge badge-green" style="margin-bottom:16px;">BETA · 원내 시범 운용</div>
+      <h1>AI 진료 노트 <span style="color:var(--gold);">STT · SOAP</span></h1>
+      <p>
+        진료 대화를 음성 인식하여, Claude AI가 자동으로 SOAP 노트를 생성합니다.<br>
+        의사·환자 발화를 구분해 더 정확한 기록으로 정리됩니다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       SOAP TOOL
+  ======================================================= -->
+  <section class="section soap-wrap">
+    <div class="container" style="max-width: 880px;">
+
+      <!-- Browser warning -->
+      <div class="browser-warn" id="browserWarn">
+        <strong>⚠️ 브라우저 지원 알림</strong><br>
+        이 페이지의 음성 인식 기능은 <strong>Chrome / Edge</strong> 데스크톱 브라우저에서 가장 안정적으로 동작합니다.
+        Safari·Firefox에서는 음성 인식이 제한될 수 있습니다.
+      </div>
+
+      <!-- 01. API Key -->
+      <div class="soap-card">
+        <div class="soap-card-head">
+          <h2>01 · Claude API Key</h2>
+          <span class="toggle-link" id="apiToggle">설정 펼치기</span>
+        </div>
+        <div class="collapsible" id="apiPanel">
+          <div class="api-row">
+            <input type="password" id="apiKey" class="api-input" placeholder="sk-ant-... (Anthropic Console에서 발급)" autocomplete="off" spellcheck="false">
+            <button class="btn btn-mint" id="saveKey" type="button" style="padding:12px 18px; font-size:0.85rem;">저장</button>
+            <button class="btn btn-ghost" id="clearKey" type="button" style="padding:12px 18px; font-size:0.85rem;">삭제</button>
+          </div>
+          <p class="api-status" id="apiStatus">API 키는 브라우저 로컬스토리지에만 저장되며 서버로 전송되지 않습니다.</p>
+        </div>
+      </div>
+
+      <!-- 02. 음성 인식 + 발화자 -->
+      <div class="soap-card">
+        <div class="soap-card-head">
+          <h2>02 · 음성 인식 · 발화자 구분</h2>
+          <span class="head-aside">한국어 (ko-KR)</span>
+        </div>
+
+        <p style="font-size:0.82rem; color:var(--text-3); margin-bottom:12px; letter-spacing:0.02em;">
+          ① 현재 말하는 사람을 선택하세요 → ② [녹음 시작]을 누르면 실시간으로 인식됩니다.
+        </p>
+
+        <!-- 발화자 -->
+        <div class="speaker-row" role="group" aria-label="발화자 선택">
+          <button class="spk-btn doctor active" data-speaker="doctor" type="button">
+            <span class="spk-dot"></span>
+            <span>의사 (Doctor)</span>
+          </button>
+          <button class="spk-btn patient" data-speaker="patient" type="button">
+            <span class="spk-dot"></span>
+            <span>환자 (Patient)</span>
+          </button>
+        </div>
+
+        <!-- 녹음 컨트롤 -->
+        <div class="rec-row">
+          <button class="rec-btn" id="recBtn" type="button">
+            <span class="rec-ic"></span>
+            <span id="recBtnLabel">녹음 시작</span>
+          </button>
+          <button class="rec-btn rec-btn-ghost" id="clearBtn" type="button">대화 비우기</button>
+          <span class="rec-status" id="recStatus">대기 중</span>
+        </div>
+      </div>
+
+      <!-- 03. 대화 내용 -->
+      <div class="soap-card">
+        <div class="soap-card-head">
+          <h2>03 · 대화 내용</h2>
+          <span class="head-aside" id="msgCount">0 개</span>
+        </div>
+        <div class="transcript" id="transcript" aria-live="polite"></div>
+
+        <div class="gen-row">
+          <button class="gen-btn" id="genBtn" type="button" disabled>
+            <span class="gen-ic">✨</span>
+            <span class="gen-spinner"></span>
+            <span id="genBtnLabel">SOAP 노트 생성</span>
+          </button>
+          <span class="gen-hint" id="genHint">대화가 1건 이상 있어야 생성할 수 있습니다.</span>
+        </div>
+
+        <!-- SOAP 결과 -->
+        <div class="soap-result" id="soapResult">
+          <button class="copy-btn" id="copyBtn" type="button">📋 복사</button>
+          <pre id="soapText"></pre>
+        </div>
+      </div>
+
+      <!-- Disclaimer -->
+      <p class="soap-disclaimer">
+        <strong>안내</strong> · 본 도구는 의료진의 기록 보조용이며, 최종 진료 기록은 반드시 담당의가 검토·확정해야 합니다.
+        음성 인식 결과 및 AI 생성 내용은 정확하지 않을 수 있습니다. 환자 정보는 외부로 전송되지 않도록 익명화하여 사용하세요.
+      </p>
+
+    </div>
+  </section>
+
+  <!-- ======================================================
+       FOOTER
+  ======================================================= -->
+  <footer id="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="logo-ko">청심연한의원</div>
+          <div class="logo-sub">CHEONGSHIMYEON KOREAN MEDICINE</div>
+          <p>서울 마포구 상암동에 위치한 근골격계 전문 한의원입니다.<br>몸의 균형을 회복하고 건강한 일상으로 돌아오세요.</p>
+        </div>
+        <div class="footer-col">
+          <h4>진료</h4>
+          <ul>
+            <li><a href="../treatment.html">손목 / 등 / 목</a></li>
+            <li><a href="../treatment.html">승모근 / 목디스크</a></li>
+            <li><a href="../treatment.html">발목 / 수술후유착</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>바로가기</h4>
+          <ul>
+            <li><a href="../about.html">원장 소개</a></li>
+            <li><a href="../location.html">오시는 길</a></li>
+            <li><a href="../contact.html">예약·문의</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>서울시 마포구 월드컵북로 402 케이이티빌딩 216호·217호 | 대표전화: 02-6393-5337</p>
+        <p>© 2016 상암동청심연한의원. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../js/main.js"></script>
+  <script src="soap.js"></script>
+</body>
+</html>
