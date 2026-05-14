@@ -1174,6 +1174,31 @@
   <!-- Toast -->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script>
+    // Service Worker: 캐시 완전 비활성화. 새 SW 가 활성화되면 페이지를 한 번 새로고침해
+    // Safari PWA(홈 화면 추가) 환경에서도 항상 최신 코드가 로드되도록 합니다.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js', { scope: './' })
+          .then((reg) => {
+            reg.update().catch(() => {});
+            window.addEventListener('focus', () => reg.update().catch(() => {}));
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') reg.update().catch(() => {});
+            });
+          })
+          .catch(() => {});
+
+        const hadController = !!navigator.serviceWorker.controller;
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing || !hadController) return;
+          refreshing = true;
+          window.location.reload();
+        });
+      });
+    }
+  </script>
   <script src="soap.js"></script>
 </body>
 </html>
