@@ -17,6 +17,7 @@
   // 상단
   const logoutBtn = $('logoutBtn');
   const excelBtn  = $('excelBtn');
+  const driveBtn  = $('driveBtn');
 
   // 탭/월 네비
   const tabSales    = $('tabSales');
@@ -84,9 +85,18 @@
   const lockError      = $('lockError');
 
   /* ── 설정 ──────────────────────────────────────────────── */
-  const AUTH_URL    = '/api/auth';
-  const TOKEN_KEY   = 'csy_soap_token';      // SOAP 와 토큰 공유 (같은 비밀번호)
-  const STORAGE_KEY = 'csy_cashbook_v1';     // { sales: [...], purchases: [...] }
+  const AUTH_URL    = '/api/cashbook-auth';   // CASHBOOK_PASSWORD 기반 (SOAP 와 분리)
+  const CONFIG_URL  = '/api/cashbook-config'; // GOOGLE_CLIENT_ID 조회
+  const TOKEN_KEY   = 'csy_cashbook_token';   // SOAP 와 다른 키 — 비밀번호 분리
+  const STORAGE_KEY = 'csy_cashbook_v1';      // { sales: [...], purchases: [...] }
+
+  // Google Drive 동기화 (선택)
+  const DRIVE_SCOPES           = 'https://www.googleapis.com/auth/drive.appdata';
+  const DRIVE_FILENAME         = 'cashbook_data.json';
+  const DRIVE_TOKEN_KEY        = 'csy_cashbook_drive_token';
+  const DRIVE_TOKEN_EXPIRY_KEY = 'csy_cashbook_drive_expiry';
+  const DRIVE_FILE_ID_KEY      = 'csy_cashbook_drive_file_id';
+  const DRIVE_SIGNED_IN_KEY    = 'csy_cashbook_drive_signed_in';
 
   /* ── 상태 ──────────────────────────────────────────────── */
   let activeTab    = 'sales';                 // 'sales' | 'purchase'
@@ -94,6 +104,14 @@
   let editingId    = null;                    // 수정 중인 항목 id (null = 새 항목)
   /** @type {{ sales: SaleEntry[], purchases: PurchaseEntry[] }} */
   let data         = { sales: [], purchases: [] };
+
+  // Google Drive 상태
+  let googleClientId    = '';
+  let driveAccessToken  = '';
+  let driveFileId       = '';
+  let driveTokenClient  = null;
+  let driveSyncTimer    = null;
+  let driveRefreshTimer = null;
 
   /* ── 인증 (SOAP_PASSWORD 토큰 재사용) ───────────────────── */
   let memToken = '';
@@ -313,11 +331,16 @@
       return { sales: [], purchases: [] };
     }
   }
-  function saveData() {
+  function saveLocal() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
     catch (e) {
       toast('저장 실패: 브라우저 저장 공간을 확인하세요');
     }
+  }
+  // saveData = 로컬 저장 + (연결 시) Drive 자동 동기화
+  function saveData() {
+    saveLocal();
+    scheduleDriveSync();
   }
   data = loadData();
 
@@ -900,6 +923,336 @@
   }
   excelBtn.addEventListener('click', exportExcel);
 
+  /* ============================================================
+     Google Drive 동기화 (선택적)
+     ----------------------------------------------------------------
+     - GOOGLE_CLIENT_ID 환경변수가 설정돼 있어야 활성화됨
+     - 미연결/미설정 시: localStorage 폴백 (기존 동작 그대로)
+     - 연결 시: 페이지 로드 → Drive 에서 fetch (로컬 덮어쓰기)
+                CRUD → 1.2초 debounce 후 Drive 로 push
+     - 파일은 Drive 의 appDataFolder 에 저장 (앱 전용·숨김)
+     ============================================================ */
+  function setDriveUiState(state) {
+    if (!driveBtn) return;
+    driveBtn.classList.remove('connected', 'syncing', 'error');
+    const label = driveBtn.querySelector('.drive-label');
+    if (state === 'hidden') {
+      driveBtn.style.display = 'none';
+      return;
+    }
+    driveBtn.style.display = '';
+    if (state === 'disconnected') {
+      if (label) label.textContent = 'Drive 연결';
+      driveBtn.title = 'Google Drive 와 동기화';
+    } else if (state === 'connecting') {
+      driveBtn.classList.add('syncing');
+      if (label) label.textContent = '연결 중…';
+      driveBtn.title = 'Google 인증 중';
+    } else if (state === 'connected') {
+      driveBtn.classList.add('connected');
+      if (label) label.textContent = 'Drive 연결됨';
+      driveBtn.title = 'Google Drive 연결됨 (클릭 시 해제)';
+    } else if (state === 'syncing') {
+      driveBtn.classList.add('connected', 'syncing');
+      if (label) label.textContent = '동기화 중…';
+    } else if (state === 'error') {
+      driveBtn.classList.add('error');
+      if (label) label.textContent = '동기화 오류';
+      driveBtn.title = '동기화 오류 — 클릭 시 재연결';
+    }
+  }
+
+  function saveCachedDriveToken(token, expiresInSec) {
+    const expiryMs = Date.now() + (parseInt(expiresInSec, 10) || 3600) * 1000;
+    try {
+      sessionStorage.setItem(DRIVE_TOKEN_KEY, token);
+      sessionStorage.setItem(DRIVE_TOKEN_EXPIRY_KEY, String(expiryMs));
+      localStorage.setItem(DRIVE_SIGNED_IN_KEY, '1');
+    } catch (_) {}
+  }
+  function loadCachedDriveToken() {
+    try {
+      const token  = sessionStorage.getItem(DRIVE_TOKEN_KEY);
+      const expiry = parseInt(sessionStorage.getItem(DRIVE_TOKEN_EXPIRY_KEY), 10);
+      const fileId = sessionStorage.getItem(DRIVE_FILE_ID_KEY) || '';
+      if (token && expiry && Date.now() < expiry - 60_000) {
+        driveAccessToken = token;
+        if (fileId) driveFileId = fileId;
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+  function clearCachedDriveToken() {
+    try {
+      sessionStorage.removeItem(DRIVE_TOKEN_KEY);
+      sessionStorage.removeItem(DRIVE_TOKEN_EXPIRY_KEY);
+      sessionStorage.removeItem(DRIVE_FILE_ID_KEY);
+    } catch (_) {}
+  }
+  function handleDriveAuthLoss(reason) {
+    driveAccessToken = '';
+    driveFileId      = '';
+    clearCachedDriveToken();
+    try { localStorage.removeItem(DRIVE_SIGNED_IN_KEY); } catch (_) {}
+    if (driveRefreshTimer) { clearTimeout(driveRefreshTimer); driveRefreshTimer = null; }
+    setDriveUiState(googleClientId ? 'disconnected' : 'hidden');
+    if (reason) toast(reason);
+  }
+
+  async function fetchGoogleConfig() {
+    try {
+      const res = await fetch(CONFIG_URL, { cache: 'no-store' });
+      if (!res.ok) return;
+      const j = await res.json();
+      googleClientId = (j && typeof j.googleClientId === 'string') ? j.googleClientId : '';
+    } catch (_) {}
+  }
+  function waitForGIS(timeoutMs) {
+    return new Promise((resolve, reject) => {
+      const t0 = Date.now();
+      const ok = () => !!(window.google && window.google.accounts && window.google.accounts.oauth2);
+      if (ok()) return resolve();
+      const id = setInterval(() => {
+        if (ok()) { clearInterval(id); resolve(); }
+        else if (Date.now() - t0 > (timeoutMs || 8000)) {
+          clearInterval(id);
+          reject(new Error('Google Identity Services failed to load'));
+        }
+      }, 100);
+    });
+  }
+  function initTokenClient() {
+    if (!googleClientId || !window.google) return;
+    driveTokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: googleClientId,
+      scope:     DRIVE_SCOPES,
+      callback:  async (resp) => {
+        if (resp && resp.error) {
+          setDriveUiState('disconnected');
+          toast('Google 인증 실패: ' + (resp.error_description || resp.error));
+          return;
+        }
+        if (!resp || !resp.access_token) {
+          setDriveUiState('disconnected');
+          return;
+        }
+        driveAccessToken = resp.access_token;
+        saveCachedDriveToken(resp.access_token, resp.expires_in);
+        setDriveUiState('connected');
+        scheduleDriveTokenRefresh(parseInt(resp.expires_in, 10) || 3600);
+        // 첫 연결: 로컬에 데이터가 있으면 confirm, 그 외 자연스러운 동기화
+        const isFirstSignIn = !sessionStorage.getItem(DRIVE_TOKEN_EXPIRY_KEY + '_last');
+        try { sessionStorage.setItem(DRIVE_TOKEN_EXPIRY_KEY + '_last', '1'); } catch (_) {}
+        try { await initialDriveSync(isFirstSignIn); } catch (_) {}
+      },
+      error_callback: (err) => {
+        setDriveUiState('disconnected');
+        if (err && err.type !== 'popup_closed') {
+          toast('Google 인증 오류');
+        }
+      }
+    });
+  }
+  function scheduleDriveTokenRefresh(expiresInSec) {
+    if (driveRefreshTimer) clearTimeout(driveRefreshTimer);
+    const refreshMs = Math.max(60_000, ((expiresInSec || 3600) - 120) * 1000);
+    driveRefreshTimer = setTimeout(() => {
+      if (driveTokenClient) driveTokenClient.requestAccessToken({ prompt: '' });
+    }, refreshMs);
+  }
+
+  function driveSignInClick() {
+    if (!googleClientId) {
+      toast('GOOGLE_CLIENT_ID 가 서버에 설정되지 않았습니다');
+      return;
+    }
+    if (!driveTokenClient) {
+      toast('Google 클라이언트 초기화 중입니다. 잠시 후 다시 시도하세요.');
+      return;
+    }
+    if (driveAccessToken) {
+      // 이미 연결됨 → 해제 옵션
+      if (confirm('Google Drive 연결을 해제할까요?\n(이후 변경사항은 Drive 에 저장되지 않습니다)')) {
+        const t = driveAccessToken;
+        if (window.google && google.accounts.oauth2) {
+          try { google.accounts.oauth2.revoke(t, () => {}); } catch (_) {}
+        }
+        handleDriveAuthLoss('Google Drive 연결 해제됨');
+      }
+      return;
+    }
+    setDriveUiState('connecting');
+    // prompt 비워두면 이미 동의했던 경우 silent, 아니면 동의 UI
+    driveTokenClient.requestAccessToken({ prompt: '' });
+  }
+
+  /* ── Drive REST helpers ─────────────────────────────── */
+  async function driveListFile() {
+    if (!driveAccessToken) return null;
+    const q   = encodeURIComponent("name='" + DRIVE_FILENAME + "'");
+    const url = 'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=' + q + '&fields=files(id,modifiedTime)';
+    const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + driveAccessToken } });
+    if (res.status === 401) { handleDriveAuthLoss('Drive 인증이 만료되었습니다. 다시 연결하세요.'); return null; }
+    if (!res.ok) throw new Error('Drive list 실패 (' + res.status + ')');
+    const j = await res.json();
+    return (j && j.files && j.files[0]) || null;
+  }
+  async function driveReadFile(fileId) {
+    if (!driveAccessToken || !fileId) return null;
+    const res = await fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+      headers: { 'Authorization': 'Bearer ' + driveAccessToken }
+    });
+    if (res.status === 401) { handleDriveAuthLoss('Drive 인증이 만료되었습니다.'); return null; }
+    if (!res.ok) throw new Error('Drive read 실패 (' + res.status + ')');
+    try { return await res.json(); } catch (_) { return null; }
+  }
+  async function driveWriteFile(content) {
+    if (!driveAccessToken) return false;
+    const body = JSON.stringify(content);
+    let res;
+    if (driveFileId) {
+      res = await fetch('https://www.googleapis.com/upload/drive/v3/files/' + driveFileId + '?uploadType=media', {
+        method:  'PATCH',
+        headers: { 'Authorization': 'Bearer ' + driveAccessToken, 'Content-Type': 'application/json' },
+        body
+      });
+    } else {
+      const metadata = { name: DRIVE_FILENAME, parents: ['appDataFolder'] };
+      const boundary = '----cashbook' + Date.now();
+      const delim    = '\r\n--' + boundary + '\r\n';
+      const close    = '\r\n--' + boundary + '--';
+      const multi    =
+        delim + 'Content-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) +
+        delim + 'Content-Type: application/json\r\n\r\n' + body + close;
+      res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+        method:  'POST',
+        headers: { 'Authorization': 'Bearer ' + driveAccessToken, 'Content-Type': 'multipart/related; boundary=' + boundary },
+        body:    multi
+      });
+    }
+    if (res.status === 401) { handleDriveAuthLoss('Drive 인증이 만료되었습니다.'); return false; }
+    if (!res.ok) throw new Error('Drive write 실패 (' + res.status + ')');
+    if (!driveFileId) {
+      const j = await res.json();
+      driveFileId = (j && j.id) || '';
+      try { if (driveFileId) sessionStorage.setItem(DRIVE_FILE_ID_KEY, driveFileId); } catch (_) {}
+    }
+    return true;
+  }
+
+  async function initialDriveSync(isFirstSignIn) {
+    if (!driveAccessToken) return;
+    setDriveUiState('syncing');
+    try {
+      const meta = await driveListFile();
+      if (meta && meta.id) {
+        driveFileId = meta.id;
+        try { sessionStorage.setItem(DRIVE_FILE_ID_KEY, driveFileId); } catch (_) {}
+
+        // 사용자 첫 연결이고 로컬 데이터가 있으면 충돌 조정
+        const hasLocal = (data.sales && data.sales.length) || (data.purchases && data.purchases.length);
+        if (isFirstSignIn && hasLocal) {
+          const remote    = await driveReadFile(meta.id);
+          const remoteCnt =
+            ((remote && Array.isArray(remote.sales))     ? remote.sales.length     : 0) +
+            ((remote && Array.isArray(remote.purchases)) ? remote.purchases.length : 0);
+          const localCnt  = data.sales.length + data.purchases.length;
+          const useDrive  = confirm(
+            'Drive 에 저장된 데이터가 있습니다.\n\n' +
+            '  Drive: ' + remoteCnt + '건\n' +
+            '  현재 기기: ' + localCnt + '건\n\n' +
+            '[확인] Drive 데이터 불러오기 (현재 기기 데이터 덮어쓰기)\n' +
+            '[취소] 현재 기기 데이터를 Drive 에 업로드 (Drive 데이터 덮어쓰기)'
+          );
+          if (useDrive) {
+            if (remote && typeof remote === 'object') {
+              applyRemoteData(remote);
+              toast('Drive 데이터 불러옴');
+            }
+          } else {
+            const ok = await driveWriteFile(data);
+            if (ok) toast('현재 기기 데이터를 Drive 에 업로드');
+          }
+          setDriveUiState('connected');
+          return;
+        }
+
+        // 일반 경로: Drive → 로컬 (페이지 로드 시 최신 데이터)
+        const remote = await driveReadFile(meta.id);
+        if (remote && typeof remote === 'object') {
+          applyRemoteData(remote);
+          if (isFirstSignIn) toast('Drive 데이터 불러옴');
+        }
+      } else {
+        // 원격에 파일 없음 → 로컬을 Drive 로
+        const ok = await driveWriteFile(data);
+        if (ok && isFirstSignIn) toast('Drive 에 초기 데이터 업로드');
+      }
+      setDriveUiState('connected');
+    } catch (e) {
+      console.error('initialDriveSync failed:', e);
+      setDriveUiState('error');
+      toast('Drive 동기화 실패');
+    }
+  }
+
+  function applyRemoteData(remote) {
+    data = {
+      sales:     Array.isArray(remote.sales)     ? remote.sales     : [],
+      purchases: Array.isArray(remote.purchases) ? remote.purchases : []
+    };
+    // 진행 중이던 수정모드는 안전을 위해 취소
+    if (editingId != null) {
+      editingId = null;
+      editBanner.classList.remove('show');
+      sSubmitLabel.textContent = '추가';
+      pSubmitLabel.textContent = '추가';
+    }
+    saveLocal();
+    renderList();
+  }
+
+  function scheduleDriveSync() {
+    if (!driveAccessToken) return;
+    if (driveSyncTimer) clearTimeout(driveSyncTimer);
+    setDriveUiState('syncing');
+    driveSyncTimer = setTimeout(async () => {
+      try {
+        const ok = await driveWriteFile(data);
+        setDriveUiState(ok ? 'connected' : 'error');
+      } catch (e) {
+        console.error('drive sync failed:', e);
+        setDriveUiState('error');
+      }
+    }, 1200);
+  }
+
+  async function initGoogleDrive() {
+    if (!driveBtn) return;
+    await fetchGoogleConfig();
+    if (!googleClientId) {
+      setDriveUiState('hidden');
+      return;
+    }
+    try {
+      await waitForGIS();
+      initTokenClient();
+      setDriveUiState('disconnected');
+      // 캐시 토큰이 있으면 자동 사용
+      if (loadCachedDriveToken()) {
+        setDriveUiState('connected');
+        try { sessionStorage.setItem(DRIVE_TOKEN_EXPIRY_KEY + '_last', '1'); } catch (_) {}
+        try { await initialDriveSync(false); } catch (_) {}
+      }
+    } catch (e) {
+      console.error('initGoogleDrive failed:', e);
+      setDriveUiState('hidden');
+    }
+  }
+
+  if (driveBtn) driveBtn.addEventListener('click', driveSignInClick);
+
   /* ── 초기 ──────────────────────────────────────────────── */
   // 일자 디폴트 = 오늘
   sDate.value = todayYmd();
@@ -907,4 +1260,5 @@
   syncCardField(sPayMethod, sCardCompanyField, sCardCompany, true);
   syncCardField(pPayMethod, pCardCompanyField, pCardCompany, false);
   setMonth(viewMonth);
+  initGoogleDrive();
 })();

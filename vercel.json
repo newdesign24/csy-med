@@ -3,6 +3,12 @@
   "functions": {
     "api/claude.js": {
       "maxDuration": 30
+    },
+    "api/cashbook-auth.js": {
+      "maxDuration": 10
+    },
+    "api/cashbook-config.js": {
+      "maxDuration": 5
     }
   },
   "headers": [

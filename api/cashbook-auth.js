@@ -1,0 +1,104 @@
+/* ============================================================
+   Vercel Serverless Function — Cashbook Auth (Password gate)
+   ----------------------------------------------------------------
+   POST /api/cashbook-auth
+     Body: { password: string }
+     Response 200: { token }  ← localStorage(csy_cashbook_token) 에 저장
+     Response 401: { error }
+   ----------------------------------------------------------------
+   - 비밀번호는 서버 환경변수 CASHBOOK_PASSWORD 로만 관리됩니다.
+     (SOAP_PASSWORD 와는 독립; SOAP 와 다른 비밀번호 운용 가능)
+   - 발급 토큰 = HMAC-SHA256(CASHBOOK_PASSWORD, fixed-salt)
+     같은 비밀번호로는 항상 같은 토큰이 나오지만, 비밀번호 없이는
+     절대 생성할 수 없습니다. 비밀번호를 바꾸면 모든 기존 토큰 무효화.
+   ============================================================ */
+
+const crypto = require('crypto');
+
+const TOKEN_SALT = 'csy-cashbook-v1';
+
+function deriveToken(password) {
+  return crypto.createHmac('sha256', password).update(TOKEN_SALT).digest('hex');
+}
+
+function constantTimeEq(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const ba = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
+}
+
+function readJsonBody(req) {
+  if (req.body && typeof req.body === 'object') return Promise.resolve(req.body);
+  return new Promise((resolve, reject) => {
+    let raw = '';
+    req.on('data', (chunk) => {
+      raw += chunk;
+      if (raw.length > 4096) { reject(new Error('Request too large')); req.destroy(); }
+    });
+    req.on('end', () => {
+      if (!raw) return resolve({});
+      try { resolve(JSON.parse(raw)); }
+      catch (e) { reject(new Error('Invalid JSON: ' + e.message)); }
+    });
+    req.on('error', reject);
+  });
+}
+
+module.exports = async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
+  const origin = req.headers && req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  }
+
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Allow', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    res.setHeader('Access-Control-Max-Age', '600');
+    return res.status(204).end();
+  }
+
+  const expected = process.env.CASHBOOK_PASSWORD;
+  if (!expected) {
+    return res.status(500).json({
+      error: { type: 'config_error', message: 'CASHBOOK_PASSWORD 환경변수가 서버에 설정되어 있지 않습니다.' }
+    });
+  }
+
+  if (req.method === 'POST') {
+    let body;
+    try { body = await readJsonBody(req); }
+    catch (e) {
+      return res.status(400).json({ error: { type: 'bad_request', message: e.message } });
+    }
+
+    const submitted = body && typeof body.password === 'string' ? body.password : '';
+
+    if (!submitted) {
+      return res.status(400).json({
+        error: { type: 'missing_password', message: '비밀번호를 입력하세요.' }
+      });
+    }
+
+    if (!constantTimeEq(submitted, expected)) {
+      await new Promise((r) => setTimeout(r, 600));
+      return res.status(401).json({
+        error: { type: 'invalid_password', message: '비밀번호가 올바르지 않습니다.' }
+      });
+    }
+
+    return res.status(200).json({ token: deriveToken(expected) });
+  }
+
+  res.setHeader('Allow', 'POST');
+  return res.status(405).json({
+    error: { type: 'method_not_allowed', message: 'POST 메서드만 허용됩니다.' }
+  });
+};
