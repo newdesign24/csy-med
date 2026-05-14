@@ -436,8 +436,14 @@
       transition: var(--t);
       min-height: 44px;
     }
-    /* iOS Safari 의 date input intrinsic 폭 강제 해제 */
-    .input[type="date"] { -webkit-min-logical-width: 0; }
+    /* iOS Safari 의 date input intrinsic 폭 강제 해제 (옆 셀 침범 방지) */
+    .input[type="date"] {
+      -webkit-min-logical-width: 0;
+      min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
+      display: block;
+    }
     .input.mono { font-family: var(--mono); letter-spacing: 0.01em; }
     .input:focus, .select:focus, .textarea:focus {
       border-color: var(--primary);
@@ -775,18 +781,21 @@
     /* ============================================================
        Responsive — iPad / mobile
        ============================================================ */
-    /* 태블릿 가로/와이드 데스크탑: 좌(form) + 우(list) 분할 유지 */
-    /* iPad landscape (1024px) 까지는 분할, iPad portrait (≤1000) 부터는 스택 */
-    @media (max-width: 1000px) {
+    /* iPad 세로 모드 + 좁은 데스크탑: 폼:리스트 = 40:60 세로 스택
+       (iPad Pro 12.9" portrait = 1024px 까지 모두 포함) */
+    @media (max-width: 1080px) {
       .workspace {
         grid-template-columns: 1fr;
-        grid-template-rows: auto minmax(0, 1fr);
+        /* grid row 비율로 폼/리스트 40:60 강제 — 리스트가 더 넓게 */
+        grid-template-rows: minmax(0, 2fr) minmax(0, 3fr);
       }
-      .panel.form-panel {
-        /* 태블릿 스택 모드: 폼 패널은 내용 높이만큼만, 단 화면의 60% 까지로 제한 */
-        max-height: 60vh;
-      }
-      /* 태블릿에서 폼은 여전히 2열을 유지 — 가로 폭이 충분함 */
+      /* grid row 가 비율을 강제하므로 max-height 해제. 폼-바디 내부는
+         이미 overflow-y: auto 이므로 행에 맞춰 자동 스크롤. */
+      .panel.form-panel { max-height: none; }
+      /* 일자(.field:first-child)는 단독 행 — iOS Safari date input 의
+         intrinsic min-width 가 옆 셀(차트번호/상호명)을 침범해 겹치는
+         문제를 원천 차단 */
+      .form-grid > .field:first-child { grid-column: 1 / -1; }
       .form-grid { gap: 16px 14px; }
     }
     @media (max-width: 900px) {
@@ -803,7 +812,13 @@
       .field.full { grid-column: 1; }
     }
     @media (max-width: 560px) {
-      .workspace { gap: 10px; padding: 10px; }
+      .workspace {
+        gap: 10px;
+        padding: 10px;
+        /* 폰: 비율 강제 대신 폼은 컨텐츠 높이(상한 50vh), 리스트는 나머지 */
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+      .panel.form-panel { max-height: 50vh; }
       .panel-head { padding: 12px 14px; min-height: 52px; }
       .form-body { padding: 14px 16px 60px; }
       .list-scroll { padding: 10px 12px 24px; }
