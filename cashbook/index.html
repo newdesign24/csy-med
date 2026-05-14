@@ -395,7 +395,9 @@
       flex: 1;
       overflow-y: auto;
       padding: 18px 20px 80px;
-      -webkit-overflow-scrolling: touch;
+      /* iOS: momentum scroll(-webkit-overflow-scrolling: touch) 제거 →
+         rubber-band 출렁임 안정화. overscroll-behavior: contain 으로
+         부모 스크롤로 전파되는 것도 차단. */
       overscroll-behavior: contain;
     }
     .form-body::-webkit-scrollbar { width: 8px; }
@@ -413,6 +415,10 @@
       min-width: 0;          /* grid item 이 intrinsic min-content 보다 작아질 수 있도록 */
     }
     .field.full { grid-column: 1 / -1; }
+
+    /* 기본(데스크탑 분할 레이아웃): row-pair 는 투명. 안에 있는 두 .field 가
+       그대로 grid 의 col1/col2 항목이 되어 기존 2열 레이아웃을 유지한다. */
+    .row-pair { display: contents; }
     .field-label {
       font-size: 0.78rem;
       font-weight: 600;
@@ -792,10 +798,30 @@
       /* grid row 가 비율을 강제하므로 max-height 해제. 폼-바디 내부는
          이미 overflow-y: auto 이므로 행에 맞춰 자동 스크롤. */
       .panel.form-panel { max-height: none; }
-      /* 일자(.field:first-child)는 단독 행 — iOS Safari date input 의
-         intrinsic min-width 가 옆 셀(차트번호/상호명)을 침범해 겹치는
-         문제를 원천 차단 */
-      .form-grid > .field:first-child { grid-column: 1 / -1; }
+
+      /* iPad/iOS WebKit 대응 행 페어:
+         - row-pair 가 grid 의 full row 를 차지하는 flex 컨테이너로 동작
+         - 일자(.field-date) 는 160px 고정 폭 → 옆 셀 침범 자체가 불가능
+         - 차트번호 / 상호명은 나머지 공간을 모두 차지 (flex: 1) */
+      .row-pair {
+        display: flex;
+        gap: 12px;
+        grid-column: 1 / -1;
+        align-items: flex-start;
+      }
+      .row-pair .field-date {
+        flex: 0 0 160px;
+        max-width: 160px;
+      }
+      .row-pair .field-date .input[type="date"] {
+        width: 100%;
+        max-width: 160px;
+      }
+      .row-pair .field:not(.field-date) {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
       .form-grid { gap: 16px 14px; }
     }
     @media (max-width: 900px) {
@@ -1081,13 +1107,16 @@
 
         <!-- 매출 폼 -->
         <form id="salesForm" class="form-grid" autocomplete="off">
-          <div class="field">
-            <label class="field-label" for="sDate">일자<span class="req">*</span></label>
-            <input class="input mono" id="sDate" type="date" required />
-          </div>
-          <div class="field">
-            <label class="field-label" for="sChart">차트번호</label>
-            <input class="input mono" id="sChart" type="text" inputmode="numeric" placeholder="예: 12345" />
+          <!-- 일자(고정 폭) + 차트번호(나머지) 한 줄 페어 -->
+          <div class="row-pair">
+            <div class="field field-date">
+              <label class="field-label" for="sDate">일자<span class="req">*</span></label>
+              <input class="input mono" id="sDate" type="date" required />
+            </div>
+            <div class="field">
+              <label class="field-label" for="sChart">차트번호</label>
+              <input class="input mono" id="sChart" type="text" inputmode="numeric" placeholder="예: 12345" />
+            </div>
           </div>
           <div class="field">
             <label class="field-label" for="sName">이름<span class="req">*</span></label>
@@ -1170,13 +1199,16 @@
 
         <!-- 매입 폼 -->
         <form id="purchaseForm" class="form-grid" autocomplete="off" style="display: none;">
-          <div class="field">
-            <label class="field-label" for="pDate">일자<span class="req">*</span></label>
-            <input class="input mono" id="pDate" type="date" required />
-          </div>
-          <div class="field">
-            <label class="field-label" for="pVendor">상호명<span class="req">*</span></label>
-            <input class="input" id="pVendor" type="text" placeholder="거래처 / 상호" required />
+          <!-- 일자(고정 폭) + 상호명(나머지) 한 줄 페어 -->
+          <div class="row-pair">
+            <div class="field field-date">
+              <label class="field-label" for="pDate">일자<span class="req">*</span></label>
+              <input class="input mono" id="pDate" type="date" required />
+            </div>
+            <div class="field">
+              <label class="field-label" for="pVendor">상호명<span class="req">*</span></label>
+              <input class="input" id="pVendor" type="text" placeholder="거래처 / 상호" required />
+            </div>
           </div>
           <div class="field">
             <label class="field-label" for="pPayMethod">결제방식<span class="req">*</span></label>
