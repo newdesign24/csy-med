@@ -73,17 +73,45 @@
   /* ── 이전 버전 호환: 로컬스토리지에 저장돼 있던 키 제거 ─ */
   try { localStorage.removeItem('csy_anthropic_key'); } catch (_) {}
 
-  /* ── 인증 (비밀번호 잠금) ─────────────────────────────── */
+  /* ── 인증 (비밀번호 잠금) ───────────────────────────────
+     토큰 저장 전략:
+       1) 메모리 캐시(memToken) — Safari Private / "모든 쿠키 차단" /
+          홈화면 추가 PWA 일부 컨텍스트에서 localStorage 가 SecurityError 를
+          던지거나 비휘발성이 아닐 때도 현 세션 동안 인증 상태를 유지.
+       2) localStorage — 가능하면 영구 저장 (다음 방문 즉시 인증).
+     화면 표시는 클래스(html.authed)만으로도 충분하지만, 일부 Safari 환경에서
+     CSS 적용 회귀(bfcache 복원, 페이지쇼 직후 리페인트 등)를 막기 위해
+     인라인 style.display 도 함께 토글한다.
+     ───────────────────────────────────────────────────── */
+  let memToken = '';
+
   function getToken() {
-    try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (_) { return ''; }
+    if (memToken) return memToken;
+    try {
+      const t = localStorage.getItem(TOKEN_KEY) || '';
+      if (t) memToken = t;
+      return t;
+    } catch (_) {
+      return '';
+    }
+  }
+  function applyAuthedUI() {
+    document.documentElement.classList.add('authed');
+    if (lockScreen) lockScreen.style.display = 'none';
+  }
+  function applyLockedUI() {
+    document.documentElement.classList.remove('authed');
+    if (lockScreen) lockScreen.style.display = '';
   }
   function setToken(t) {
+    memToken = t || '';
     try { localStorage.setItem(TOKEN_KEY, t); } catch (_) {}
-    document.documentElement.classList.add('authed');
+    applyAuthedUI();
   }
   function clearAuth() {
+    memToken = '';
     try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
-    document.documentElement.classList.remove('authed');
+    applyLockedUI();
   }
   function showLockError(msg) {
     lockError.textContent = msg || '';
@@ -109,35 +137,61 @@
     }, 50);
   }
 
+  // Safari 의 back-forward cache (bfcache) 에서 페이지가 복원될 때
+  // localStorage 토큰과 DOM 상태가 어긋나 잠금화면이 다시 보이는 현상 방지.
+  window.addEventListener('pageshow', () => {
+    if (getToken()) applyAuthedUI();
+    else applyLockedUI();
+  });
+
   lockInput.addEventListener('input', () => {
     if (lockError.textContent) showLockError('');
   });
 
-  lockForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  // 재진입 방지 플래그: Safari 가 동일 submit 을 중복 발사하는 경우 대비.
+  let isLoggingIn = false;
+
+  async function performLogin() {
+    if (isLoggingIn) return;
+    isLoggingIn = true;
+
     const password = (lockInput.value || '').trim();
     if (!password) {
       showLockError('비밀번호를 입력하세요.');
-      lockInput.focus();
+      try { lockInput.focus(); } catch (_) {}
+      isLoggingIn = false;
       return;
     }
+
     showLockError('');
     showLockLoading(true);
+
     try {
+      // Safari ITP/캐시 대비: 같은 출처 명시 + HTTP 캐시 우회 + JSON 명시.
       const res = await fetch(AUTH_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+        mode: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({ password })
       });
-      const ct = res.headers.get('content-type') || '';
-      const data = ct.includes('application/json') ? await res.json() : null;
+
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      let data = null;
+      if (ct.includes('application/json')) {
+        try { data = await res.json(); } catch (_) { data = null; }
+      }
 
       if (!res.ok) {
         const msg = (data && data.error && data.error.message)
           ? data.error.message
           : `오류 (HTTP ${res.status})`;
         showLockError(msg);
-        lockInput.select();
+        try { lockInput.select(); } catch (_) {}
         return;
       }
       if (!data || !data.token) {
@@ -152,11 +206,23 @@
       showLockError('네트워크 오류: ' + (err && err.message ? err.message : err));
     } finally {
       showLockLoading(false);
+      isLoggingIn = false;
     }
+  }
+
+  // 동기 핸들러로 감싸 preventDefault 가 await 이전에 확실히 실행되도록 한다.
+  // (async 핸들러는 Promise 를 반환하므로 일부 Safari 빌드에서 폼 기본 동작이
+  // 미세하게 어긋날 수 있다는 보고가 있어 보수적으로 동기화)
+  lockForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    performLogin();
   });
 
-  // 페이지 진입 시 토큰 없으면 입력란 포커스
-  if (!getToken()) {
+  // 페이지 진입 시 토큰 있으면 잠금화면을 즉시 숨기고, 없으면 입력란 포커스.
+  if (getToken()) {
+    applyAuthedUI();
+  } else {
     setTimeout(() => { try { lockInput.focus(); } catch (_) {} }, 100);
   }
 

@@ -48,9 +48,24 @@ function readJsonBody(req) {
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
+  // 명시적 Content-Type. Safari 는 charset 누락 시 응답 본문 디코딩이 흔들리는 경우가 있음.
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
+  // 방어적 CORS 헤더. 본 페이지/API 는 동일 출처로 동작하므로 사실상 preflight 가
+  // 발생할 일이 없으나, Safari 의 일부 ITP/캐시 우회 경로에서 same-origin 요청을
+  // cross-origin 처럼 다루는 사례가 보고된 적이 있어 origin 을 반사해 둔다.
+  const origin = req.headers && req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  }
 
   if (req.method === 'OPTIONS') {
     res.setHeader('Allow', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    res.setHeader('Access-Control-Max-Age', '600');
     return res.status(204).end();
   }
 
