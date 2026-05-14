@@ -442,14 +442,18 @@
       transition: var(--t);
       min-height: 44px;
     }
-    /* iOS Safari 의 date input intrinsic 폭 강제 해제 (옆 셀 침범 방지) */
+    /* iOS Safari 의 date input intrinsic 폭 강제 해제 (옆 셀 침범 방지).
+       width / max-width 100% 를 명시적으로 강제하고, .field-date 컨테이너에
+       overflow: hidden 을 두어 native 컨트롤이 셀을 넘어도 시각적으로 차단. */
     .input[type="date"] {
-      -webkit-min-logical-width: 0;
-      min-width: 0;
+      width: 100%;
       max-width: 100%;
+      min-width: 0;
+      -webkit-min-logical-width: 0;
       box-sizing: border-box;
       display: block;
     }
+    .field-date { overflow: hidden; }
     .input.mono { font-family: var(--mono); letter-spacing: 0.01em; }
     .input:focus, .select:focus, .textarea:focus {
       border-color: var(--primary);
@@ -799,29 +803,13 @@
          이미 overflow-y: auto 이므로 행에 맞춰 자동 스크롤. */
       .panel.form-panel { max-height: none; }
 
-      /* iPad/iOS WebKit 대응 행 페어:
-         - row-pair 가 grid 의 full row 를 차지하는 flex 컨테이너로 동작
-         - 일자(.field-date) 는 160px 고정 폭 → 옆 셀 침범 자체가 불가능
-         - 차트번호 / 상호명은 나머지 공간을 모두 차지 (flex: 1) */
-      .row-pair {
-        display: flex;
-        gap: 12px;
-        grid-column: 1 / -1;
-        align-items: flex-start;
-      }
-      .row-pair .field-date {
-        flex: 0 0 160px;
-        max-width: 160px;
-      }
-      .row-pair .field-date .input[type="date"] {
-        width: 100%;
-        max-width: 160px;
-      }
-      .row-pair .field:not(.field-date) {
-        flex: 1 1 auto;
-        min-width: 0;
-      }
-
+      /* row-pair 는 기본의 display: contents 그대로 유지.
+         안의 두 .field 가 form-grid 의 일반 grid 아이템으로 참여하므로
+         1행(일자|차트번호/상호명)과 2행(이름|내원구분) 이 동일한 1fr/1fr
+         컬럼 격자에 정확히 정렬된다. iPad 세로의 경우 폼 가로폭이 충분히
+         넓어 1fr 셀(약 350~470px)이 native date picker 를 안전하게 담는다.
+         input 의 width/max-width 100% + .field-date overflow: hidden 으로
+         iOS WebKit 에서 셀을 넘는 케이스도 시각적으로 차단. */
       .form-grid { gap: 16px 14px; }
     }
     @media (max-width: 900px) {
