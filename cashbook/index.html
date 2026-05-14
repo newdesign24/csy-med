@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#064e3b" />
+  <meta name="description" content="장부 — 일일 매출/매입 입력 및 월별 정산" />
+  <title>장부</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    // 토큰이 이미 있으면 락스크린이 깜빡거리지 않도록 즉시 .authed 플래그
+    (function () {
+      try {
+        if (localStorage.getItem('csy_soap_token')) {
+          document.documentElement.classList.add('authed');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    /* ============================================================
+       Tokens — Ledger (Emerald accent, 동일 베이스)
+       ============================================================ */
+    :root {
+      --bg:           #f1f5f9;
+      --surface:      #ffffff;
+      --surface-alt:  #f8fafc;
+      --surface-deep: #e2e8f0;
+
+      --border:        #e2e8f0;
+      --border-strong: #cbd5e1;
+      --divider:       #f1f5f9;
+
+      --text-1: #0f172a;
+      --text-2: #475569;
+      --text-3: #94a3b8;
+      --text-on: #ffffff;
+
+      --primary:        #059669;
+      --primary-hover:  #047857;
+      --primary-soft:   #ecfdf5;
+      --primary-border: #a7f3d0;
+
+      --sales:          #0891b2;
+      --sales-soft:     #ecfeff;
+      --sales-border:   #a5f3fc;
+
+      --purchase:       #b45309;
+      --purchase-soft:  #fef3c7;
+      --purchase-border:#fde68a;
+
+      --danger:       #dc2626;
+      --danger-hover: #b91c1c;
+      --danger-soft:  #fef2f2;
+
+      --success:      #059669;
+      --success-soft: #d1fae5;
+
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-lg: 0 12px 36px rgba(15, 23, 42, 0.16);
+
+      --r-sm: 6px;
+      --r-md: 10px;
+      --r-lg: 14px;
+      --r-xl: 18px;
+
+      --topbar-h: 56px;
+      --t: 0.18s ease;
+
+      --font:
+        'Pretendard',
+        -apple-system, BlinkMacSystemFont, 'Segoe UI',
+        'Helvetica Neue', Arial, sans-serif;
+      --mono:
+        'Menlo', 'Consolas', 'SF Mono', 'Roboto Mono', monospace;
+    }
+
+    /* ============================================================
+       Reset / Base
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text-1);
+      font-size: 15px;
+      line-height: 1.55;
+      letter-spacing: -0.005em;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      display: flex;
+      flex-direction: column;
+    }
+    button, input, select, textarea { font-family: var(--font); }
+    button {
+      border: none;
+      background: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 0;
+      font-size: inherit;
+      touch-action: manipulation;
+    }
+    input, select, textarea { outline: none; }
+    h1, h2, h3 { margin: 0; font-weight: 600; }
+    p { margin: 0; }
+
+    /* ============================================================
+       Topbar
+       ============================================================ */
+    .topbar {
+      flex-shrink: 0;
+      height: var(--topbar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      user-select: none;
+      z-index: 10;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .brand-back {
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--r-sm);
+      color: var(--text-3);
+      transition: var(--t);
+    }
+    .brand-back:hover { background: var(--surface-alt); color: var(--text-1); }
+    .brand-title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+    }
+    .brand-title .name {
+      font-size: 0.85rem;
+      color: var(--text-3);
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .brand-title .dot {
+      width: 3px; height: 3px;
+      border-radius: 50%;
+      background: var(--text-3);
+      opacity: 0.5;
+    }
+    .brand-title h1 {
+      font-size: 1rem;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--r-sm);
+      color: var(--text-2);
+      transition: var(--t);
+    }
+    .icon-btn:hover { background: var(--surface-alt); color: var(--text-1); }
+    .icon-btn:active { transform: scale(0.94); }
+    .excel-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 14px;
+      min-height: 38px;
+      border-radius: var(--r-sm);
+      background: var(--primary);
+      color: var(--text-on);
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      transition: var(--t);
+      box-shadow: var(--shadow-sm);
+    }
+    .excel-btn:hover { background: var(--primary-hover); }
+    .excel-btn:active { transform: scale(0.97); }
+    .excel-btn svg { width: 15px; height: 15px; }
+    @media (max-width: 560px) {
+      .excel-btn .excel-label { display: none; }
+      .excel-btn { padding: 8px 10px; }
+    }
+
+    /* ============================================================
+       Sub-bar: Tabs + Month nav + Day picker
+       ============================================================ */
+    .subbar {
+      flex-shrink: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .tabs {
+      display: inline-flex;
+      padding: 4px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      gap: 4px;
+    }
+    .tab {
+      padding: 8px 18px;
+      border-radius: var(--r-sm);
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-2);
+      letter-spacing: -0.005em;
+      transition: var(--t);
+      min-height: 36px;
+    }
+    .tab:hover { color: var(--text-1); }
+    .tab.active.sales {
+      background: var(--surface);
+      color: var(--sales);
+      box-shadow: var(--shadow-sm);
+    }
+    .tab.active.purchase {
+      background: var(--surface);
+      color: var(--purchase);
+      box-shadow: var(--shadow-sm);
+    }
+    .month-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 3px;
+    }
+    .month-nav button {
+      width: 32px; height: 32px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: var(--r-sm);
+      color: var(--text-2);
+      transition: var(--t);
+    }
+    .month-nav button:hover { background: var(--surface); color: var(--text-1); }
+    .month-nav .month-label {
+      padding: 0 10px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      color: var(--text-1);
+      font-variant-numeric: tabular-nums;
+      min-width: 100px;
+      text-align: center;
+    }
+
+    /* ============================================================
+       Workspace (split)
+       ============================================================ */
+    .workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 420px minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px;
+      min-height: 0;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .panel-head {
+      flex-shrink: 0;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 56px;
+    }
+    .panel-head h2 {
+      font-size: 0.95rem;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .panel-head .sub {
+      font-size: 0.78rem;
+      color: var(--text-3);
+      font-weight: 500;
+      letter-spacing: -0.005em;
+    }
+
+    /* ============================================================
+       Form panel (LEFT)
+       ============================================================ */
+    .form-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 20px 80px;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+    .form-body::-webkit-scrollbar { width: 8px; }
+    .form-body::-webkit-scrollbar-thumb { background: var(--surface-deep); border-radius: 99px; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 10px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field.full { grid-column: 1 / -1; }
+    .field-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-2);
+      letter-spacing: -0.005em;
+    }
+    .field-label .req { color: var(--danger); margin-left: 2px; }
+
+    .input, .select, .textarea {
+      width: 100%;
+      padding: 11px 12px;
+      background: var(--surface-alt);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-md);
+      color: var(--text-1);
+      font-size: 15px;
+      font-family: var(--font);
+      letter-spacing: -0.005em;
+      transition: var(--t);
+      min-height: 44px;
+    }
+    .input.mono { font-family: var(--mono); letter-spacing: 0.01em; }
+    .input:focus, .select:focus, .textarea:focus {
+      border-color: var(--primary);
+      background: var(--surface);
+      box-shadow: 0 0 0 3px var(--primary-soft);
+    }
+    .input::placeholder, .textarea::placeholder { color: var(--text-3); }
+    .textarea {
+      min-height: 72px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+    .select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%2394a3b8' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+    .input.amount {
+      text-align: right;
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 1.02rem;
+      letter-spacing: 0.01em;
+    }
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .primary-btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 13px 18px;
+      border-radius: var(--r-md);
+      background: var(--primary);
+      color: var(--text-on);
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: var(--t);
+      min-height: 48px;
+      box-shadow: var(--shadow-sm);
+    }
+    .primary-btn:hover:not(:disabled) {
+      background: var(--primary-hover);
+      box-shadow: var(--shadow-md);
+    }
+    .primary-btn:active { transform: scale(0.985); }
+    .primary-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+    .primary-btn svg { width: 16px; height: 16px; }
+    .ghost-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 12px 18px;
+      border-radius: var(--r-md);
+      background: var(--surface);
+      color: var(--text-2);
+      font-size: 0.92rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      transition: var(--t);
+      min-height: 46px;
+    }
+    .ghost-btn:hover { background: var(--surface-alt); color: var(--text-1); border-color: var(--border-strong); }
+    .ghost-btn:active { transform: scale(0.985); }
+
+    .edit-banner {
+      margin-bottom: 14px;
+      padding: 10px 14px;
+      border-radius: var(--r-md);
+      background: var(--primary-soft);
+      border: 1px solid var(--primary-border);
+      color: #064e3b;
+      font-size: 0.82rem;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .edit-banner.show { display: flex; }
+    .edit-banner b { font-weight: 700; }
+    .edit-banner .cancel-edit {
+      font-size: 0.78rem;
+      color: var(--text-2);
+      padding: 4px 10px;
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      transition: var(--t);
+    }
+    .edit-banner .cancel-edit:hover { background: var(--surface-alt); color: var(--text-1); }
+
+    /* ============================================================
+       Right panel (List / Summary)
+       ============================================================ */
+    .right-panel { display: flex; flex-direction: column; min-height: 0; }
+
+    .summary-bar {
+      flex-shrink: 0;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--divider);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .summary-card {
+      padding: 12px 14px;
+      border-radius: var(--r-md);
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+    }
+    .summary-card .lbl {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-3);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .summary-card .val {
+      margin-top: 4px;
+      font-family: var(--mono);
+      font-size: 1.08rem;
+      font-weight: 700;
+      color: var(--text-1);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+    }
+    .summary-card.sales .val { color: var(--sales); }
+    .summary-card.purchase .val { color: var(--purchase); }
+    .summary-card.net .val { color: var(--primary); }
+
+    .list-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 18px 24px;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+    .list-scroll::-webkit-scrollbar { width: 8px; }
+    .list-scroll::-webkit-scrollbar-thumb { background: var(--surface-deep); border-radius: 99px; }
+
+    .day-group { margin-top: 16px; }
+    .day-group:first-child { margin-top: 6px; }
+
+    .day-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      margin-bottom: 8px;
+    }
+    .day-head .day-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-1);
+      letter-spacing: -0.005em;
+      font-variant-numeric: tabular-nums;
+    }
+    .day-head .day-label .dow {
+      font-size: 0.78rem;
+      color: var(--text-3);
+      font-weight: 500;
+    }
+    .day-head .day-label .count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 7px;
+      border-radius: 99px;
+      background: var(--surface);
+      color: var(--text-2);
+      font-size: 0.72rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+    }
+    .day-head .day-total {
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+    }
+    .day-head.sales .day-total { color: var(--sales); }
+    .day-head.purchase .day-total { color: var(--purchase); }
+
+    table.entry-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.85rem;
+      letter-spacing: -0.005em;
+    }
+    table.entry-table thead th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-3);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--divider);
+      background: var(--surface);
+      white-space: nowrap;
+    }
+    table.entry-table thead th.num,
+    table.entry-table tbody td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-family: var(--mono);
+    }
+    table.entry-table tbody td {
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--divider);
+      vertical-align: top;
+      color: var(--text-1);
+    }
+    table.entry-table tbody tr:hover td { background: var(--surface-alt); }
+    table.entry-table tbody tr:last-child td { border-bottom: none; }
+    table.entry-table .chart {
+      font-family: var(--mono);
+      color: var(--text-2);
+      font-size: 0.82rem;
+    }
+    table.entry-table .name { font-weight: 600; }
+    table.entry-table .tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      white-space: nowrap;
+    }
+    .tag.visit-초진 { background: var(--sales-soft); color: var(--sales); }
+    .tag.visit-재진 { background: var(--surface-alt); color: var(--text-2); }
+    .tag.visit-기타 { background: #f3e8ff; color: #7c3aed; }
+    .tag.pay {
+      background: var(--surface-alt);
+      color: var(--text-2);
+      border: 1px solid var(--border);
+    }
+    .tag.pay.cash { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
+    .tag.pay.cashreceipt { color: #2563eb; border-color: #bfdbfe; background: #eff6ff; }
+    .tag.pay.card { color: #b45309; border-color: var(--purchase-border); background: var(--purchase-soft); }
+    .detail {
+      color: var(--text-2);
+      font-size: 0.82rem;
+      white-space: pre-wrap;
+      word-break: keep-all;
+    }
+    .row-actions {
+      display: inline-flex;
+      gap: 4px;
+      opacity: 0;
+      transition: var(--t);
+    }
+    table.entry-table tbody tr:hover .row-actions { opacity: 1; }
+    .row-actions button {
+      width: 28px; height: 28px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: var(--r-sm);
+      color: var(--text-3);
+      transition: var(--t);
+    }
+    .row-actions button:hover { background: var(--surface-deep); color: var(--text-1); }
+    .row-actions .del:hover { background: var(--danger-soft); color: var(--danger); }
+
+    .empty-state {
+      margin: 40px auto;
+      text-align: center;
+      color: var(--text-3);
+      padding: 24px 20px;
+    }
+    .empty-state .empty-ic {
+      width: 56px; height: 56px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      background: var(--surface-alt);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-3);
+    }
+    .empty-state .empty-ic svg { width: 26px; height: 26px; }
+    .empty-state p {
+      font-size: 0.9rem;
+      line-height: 1.75;
+      word-break: keep-all;
+    }
+    .empty-state .hint {
+      font-size: 0.78rem;
+      margin-top: 6px;
+      opacity: 0.85;
+    }
+
+    /* ============================================================
+       Toast
+       ============================================================ */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--text-1);
+      color: var(--text-on);
+      font-size: 0.88rem;
+      font-weight: 500;
+      padding: 11px 20px;
+      border-radius: 99px;
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 9999;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ============================================================
+       Responsive — iPad / mobile
+       ============================================================ */
+    @media (max-width: 1080px) {
+      .workspace {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+      .panel.form-panel { max-height: 50vh; }
+    }
+    @media (max-width: 900px) {
+      .brand-title .name { display: none; }
+      .brand-title .dot { display: none; }
+    }
+    @media (max-width: 720px) {
+      .summary-bar { grid-template-columns: 1fr 1fr; }
+      .summary-card.net { grid-column: 1 / -1; }
+    }
+    @media (max-width: 560px) {
+      .workspace { gap: 10px; padding: 10px; }
+      .panel-head { padding: 12px 14px; min-height: 52px; }
+      .form-body { padding: 14px 16px 60px; }
+      .list-scroll { padding: 10px 12px 24px; }
+      .summary-bar { padding: 12px 14px; gap: 10px; }
+      table.entry-table tbody td { padding: 9px 7px; }
+    }
+
+    /* iOS safe area */
+    @supports (padding: max(0px)) {
+      .topbar { padding-left: max(18px, env(safe-area-inset-left)); padding-right: max(18px, env(safe-area-inset-right)); }
+      .subbar { padding-left: max(18px, env(safe-area-inset-left)); padding-right: max(18px, env(safe-area-inset-right)); }
+      .workspace {
+        padding-left: max(14px, env(safe-area-inset-left));
+        padding-right: max(14px, env(safe-area-inset-right));
+        padding-bottom: max(14px, env(safe-area-inset-bottom));
+      }
+    }
+
+    /* ============================================================
+       Lock Screen
+       ============================================================ */
+    .lock-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      animation: lockFadeIn 0.2s ease;
+    }
+    html.authed .lock-screen { display: none; }
+    @keyframes lockFadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .lock-card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      box-shadow: var(--shadow-md);
+      padding: 38px 32px 30px;
+      text-align: center;
+    }
+    .lock-icon {
+      width: 60px; height: 60px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      background: var(--primary-soft);
+      color: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--primary-border);
+    }
+    .lock-icon svg { width: 28px; height: 28px; }
+    .lock-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text-1);
+      margin-bottom: 4px;
+    }
+    .lock-sub {
+      font-size: 0.85rem;
+      color: var(--text-3);
+      margin-bottom: 26px;
+    }
+    .lock-form { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+    .lock-label {
+      font-size: 0.8rem;
+      color: var(--text-2);
+      font-weight: 600;
+    }
+    .lock-input {
+      width: 100%;
+      padding: 13px 14px;
+      background: var(--surface-alt);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-md);
+      color: var(--text-1);
+      font-size: 16px;
+      font-family: var(--font);
+      letter-spacing: 0.02em;
+      transition: var(--t);
+    }
+    .lock-input:focus {
+      border-color: var(--primary);
+      background: var(--surface);
+      box-shadow: 0 0 0 3px var(--primary-soft);
+    }
+    .lock-input::placeholder { color: var(--text-3); }
+    .lock-submit {
+      width: 100%;
+      padding: 13px;
+      min-height: 48px;
+      margin-top: 6px;
+      font-size: 0.95rem;
+    }
+    .gen-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .primary-btn.loading .gen-spinner { display: inline-block; }
+    .primary-btn.loading .gen-label { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .lock-error {
+      min-height: 1.3em;
+      font-size: 0.82rem;
+      color: var(--danger);
+      text-align: center;
+      margin: 6px 0 0;
+      line-height: 1.55;
+    }
+    .lock-error:empty { min-height: 0; }
+    .lock-foot {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--divider);
+      font-size: 0.75rem;
+      color: var(--text-3);
+      line-height: 1.65;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       LOCK SCREEN
+  ============================================================ -->
+  <div class="lock-screen" id="lockScreen" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
+    <div class="lock-card">
+      <div class="lock-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <h1 class="lock-title" id="lockTitle">장부</h1>
+      <p class="lock-sub">매출/매입 관리 · 접근 인증</p>
+
+      <form class="lock-form" id="lockForm" autocomplete="off">
+        <label class="lock-label" for="lockInput">비밀번호</label>
+        <input
+          class="lock-input"
+          id="lockInput"
+          type="password"
+          autocomplete="current-password"
+          spellcheck="false"
+          autocapitalize="off"
+          required
+        />
+        <button class="primary-btn lock-submit" id="lockSubmit" type="submit">
+          <span class="gen-label" id="lockSubmitText">접속하기</span>
+          <span class="gen-spinner"></span>
+        </button>
+        <p class="lock-error" id="lockError" role="alert" aria-live="polite"></p>
+      </form>
+
+      <p class="lock-foot">
+        승인된 사용자만 접근 가능합니다.<br>
+        비밀번호는 원장에게 문의하세요.
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       TOPBAR
+  ============================================================ -->
+  <header class="topbar">
+    <div class="brand">
+      <a href="../index.html" class="brand-back" aria-label="홈으로" title="홈으로">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </a>
+      <div class="brand-title">
+        <span class="name">청심연한의원</span>
+        <span class="dot"></span>
+        <h1>장부</h1>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="excel-btn" id="excelBtn" type="button" title="엑셀 다운로드">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="9" y1="13" x2="15" y2="13"/>
+          <line x1="9" y1="17" x2="13" y2="17"/>
+        </svg>
+        <span class="excel-label">엑셀 다운로드</span>
+      </button>
+      <button class="icon-btn" id="logoutBtn" aria-label="로그아웃" title="로그아웃">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       SUB BAR: 탭 + 월 네비
+  ============================================================ -->
+  <div class="subbar">
+    <div class="tabs" role="tablist" aria-label="장부 탭">
+      <button class="tab sales active" id="tabSales" data-tab="sales" type="button" role="tab" aria-selected="true">매출</button>
+      <button class="tab purchase" id="tabPurchase" data-tab="purchase" type="button" role="tab" aria-selected="false">매입</button>
+    </div>
+
+    <div class="month-nav" role="group" aria-label="월 선택">
+      <button id="monthPrev" type="button" aria-label="이전 달">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+      </button>
+      <span class="month-label" id="monthLabel">2026년 5월</span>
+      <button id="monthNext" type="button" aria-label="다음 달">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+      </button>
+      <button id="monthToday" type="button" class="ghost-btn" style="padding: 6px 12px; min-height: 32px; font-size: 0.82rem; border: none; background: transparent;">오늘</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       WORKSPACE
+  ============================================================ -->
+  <main class="workspace">
+
+    <!-- LEFT: Form -->
+    <section class="panel form-panel" aria-label="입력 폼">
+      <div class="panel-head">
+        <h2><span id="formTitle">매출 입력</span></h2>
+        <span class="sub" id="formSubtitle">필수 항목을 입력하세요</span>
+      </div>
+
+      <div class="form-body">
+        <div class="edit-banner" id="editBanner">
+          <span><b>수정 모드</b> · 기존 항목을 변경합니다</span>
+          <button type="button" class="cancel-edit" id="cancelEdit">취소</button>
+        </div>
+
+        <!-- 매출 폼 -->
+        <form id="salesForm" class="form-grid" autocomplete="off">
+          <div class="field">
+            <label class="field-label" for="sDate">일자<span class="req">*</span></label>
+            <input class="input mono" id="sDate" type="date" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="sChart">차트번호</label>
+            <input class="input mono" id="sChart" type="text" inputmode="numeric" placeholder="예: 12345" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="sName">이름<span class="req">*</span></label>
+            <input class="input" id="sName" type="text" placeholder="환자 이름" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="sVisit">내원구분</label>
+            <select class="select" id="sVisit">
+              <option value="초진">초진</option>
+              <option value="재진" selected>재진</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label class="field-label" for="sCategory">구분</label>
+            <select class="select" id="sCategory">
+              <option value="">(선택)</option>
+              <option value="비만한약">비만한약</option>
+              <option value="정안침">정안침</option>
+              <option value="선식+식이섬유">선식+식이섬유</option>
+              <option value="FNS">FNS</option>
+              <option value="선식">선식</option>
+              <option value="식이섬유">식이섬유</option>
+              <option value="미세약초침">미세약초침</option>
+              <option value="비영외치">비영외치</option>
+              <option value="다이어트">다이어트</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label class="field-label" for="sDetail">진료상세내역</label>
+            <textarea class="textarea" id="sDetail" rows="2" placeholder="시술/처방 등 메모"></textarea>
+          </div>
+          <div class="field">
+            <label class="field-label" for="sAmount">금액 (원)<span class="req">*</span></label>
+            <input class="input amount" id="sAmount" type="text" inputmode="numeric" placeholder="0" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="sDiscount">할인 (원)</label>
+            <input class="input amount" id="sDiscount" type="text" inputmode="numeric" placeholder="0" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="sPayMethod">결제방식<span class="req">*</span></label>
+            <select class="select" id="sPayMethod" required>
+              <option value="순수현금">순수현금</option>
+              <option value="현영발행">현영발행</option>
+              <option value="카드">카드</option>
+            </select>
+          </div>
+          <div class="field" id="sCardCompanyField" style="display:none;">
+            <label class="field-label" for="sCardCompany">카드사<span class="req">*</span></label>
+            <select class="select" id="sCardCompany">
+              <option value="">(선택)</option>
+              <option value="신한">신한</option>
+              <option value="삼성">삼성</option>
+              <option value="국민">국민</option>
+              <option value="현대">현대</option>
+              <option value="롯데">롯데</option>
+              <option value="BC">BC</option>
+              <option value="하나">하나</option>
+              <option value="우리">우리</option>
+              <option value="NH농협">NH농협</option>
+              <option value="카카오뱅크">카카오뱅크</option>
+              <option value="토스">토스</option>
+              <option value="씨티">씨티</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+
+          <div class="form-actions field full">
+            <button type="button" class="ghost-btn" id="sReset">초기화</button>
+            <button type="submit" class="primary-btn" id="sSubmit">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              <span id="sSubmitLabel">추가</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- 매입 폼 -->
+        <form id="purchaseForm" class="form-grid" autocomplete="off" style="display: none;">
+          <div class="field">
+            <label class="field-label" for="pDate">일자<span class="req">*</span></label>
+            <input class="input mono" id="pDate" type="date" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="pVendor">상호명<span class="req">*</span></label>
+            <input class="input" id="pVendor" type="text" placeholder="거래처 / 상호" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="pPayMethod">결제방식<span class="req">*</span></label>
+            <select class="select" id="pPayMethod" required>
+              <option value="현금">현금</option>
+              <option value="카드">카드</option>
+            </select>
+          </div>
+          <div class="field" id="pCardCompanyField" style="display:none;">
+            <label class="field-label" for="pCardCompany">카드사<span class="req">*</span></label>
+            <select class="select" id="pCardCompany">
+              <option value="">(선택)</option>
+              <option value="신한">신한</option>
+              <option value="삼성">삼성</option>
+              <option value="국민">국민</option>
+              <option value="현대">현대</option>
+              <option value="롯데">롯데</option>
+              <option value="BC">BC</option>
+              <option value="하나">하나</option>
+              <option value="우리">우리</option>
+              <option value="NH농협">NH농협</option>
+              <option value="카카오뱅크">카카오뱅크</option>
+              <option value="토스">토스</option>
+              <option value="씨티">씨티</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label class="field-label" for="pAmount">금액 (원)<span class="req">*</span></label>
+            <input class="input amount" id="pAmount" type="text" inputmode="numeric" placeholder="0" required />
+          </div>
+
+          <div class="form-actions field full">
+            <button type="button" class="ghost-btn" id="pReset">초기화</button>
+            <button type="submit" class="primary-btn" id="pSubmit">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              <span id="pSubmitLabel">추가</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- RIGHT: Summary + List -->
+    <section class="panel right-panel" aria-label="목록">
+      <div class="panel-head">
+        <h2>
+          <span id="listTitle">매출 내역</span>
+          <span class="sub" id="listMonthSub">2026년 5월</span>
+        </h2>
+        <span class="sub" id="listCountSub">0건</span>
+      </div>
+
+      <div class="summary-bar">
+        <div class="summary-card sales">
+          <div class="lbl">월 매출</div>
+          <div class="val" id="sumSales">0원</div>
+        </div>
+        <div class="summary-card purchase">
+          <div class="lbl">월 매입</div>
+          <div class="val" id="sumPurchase">0원</div>
+        </div>
+        <div class="summary-card net">
+          <div class="lbl">차액 (매출-매입)</div>
+          <div class="val" id="sumNet">0원</div>
+        </div>
+      </div>
+
+      <div class="list-scroll" id="listScroll">
+        <!-- day groups injected here -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js', { scope: './' })
+          .then((reg) => {
+            reg.update().catch(() => {});
+            window.addEventListener('focus', () => reg.update().catch(() => {}));
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') reg.update().catch(() => {});
+            });
+          })
+          .catch(() => {});
+
+        const hadController = !!navigator.serviceWorker.controller;
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing || !hadController) return;
+          refreshing = true;
+          window.location.reload();
+        });
+      });
+    }
+  </script>
+  <script src="cashbook.js"></script>
+</body>
+</html>
